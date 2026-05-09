@@ -1,6 +1,19 @@
+import { redirect, notFound } from "next/navigation";
+import { getServerSession } from "next-auth/next";
 import { PhoneShell } from "@/components/PhoneShell";
+import { authOptions, isAdminEmail } from "@/lib/auth";
 
-export default function AdminGenerationsPage() {
+export default async function AdminGenerationsPage() {
+  const session = await getServerSession(authOptions);
+
+  if (!session?.user?.email) {
+    redirect("/login?callbackUrl=/admin/generations");
+  }
+
+  if (!isAdminEmail(session.user.email)) {
+    notFound();
+  }
+
   return (
     <PhoneShell>
       <div>
