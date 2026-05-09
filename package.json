@@ -7,9 +7,17 @@
     "dev": "pnpm --filter @ornava/web dev",
     "dev:web": "pnpm --filter @ornava/web dev",
     "dev:worker": "pnpm --filter @ornava/worker dev",
+    "infra:up": "docker compose up -d postgres redis",
+    "infra:down": "docker compose down",
+    "db:migrate": "node scripts/migrate.mjs",
+    "db:check": "node scripts/check-db.mjs",
     "build": "pnpm -r build",
     "typecheck": "pnpm -r typecheck",
     "lint": "pnpm -r lint"
+  },
+  "dependencies": {
+    "dotenv": "^17.0.0",
+    "pg": "^8.16.0"
   },
   "devDependencies": {
     "typescript": "^5.9.0"

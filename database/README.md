@@ -6,6 +6,14 @@ Phase 1 uses Postgres as the source of truth for users, uploaded images, generat
 
 - `migrations/0001_phase1_initial.sql`: initial Phase 1 schema.
 
+Run locally:
+
+```bash
+pnpm infra:up
+pnpm db:migrate
+pnpm db:check
+```
+
 ## Notes
 
 - `app_users` is used instead of `users` to avoid conflicts with managed auth schemas such as Supabase `auth.users`.
