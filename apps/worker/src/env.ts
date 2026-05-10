@@ -1,4 +1,9 @@
+import { fileURLToPath } from "node:url";
 import { z } from "zod";
+import { config } from "dotenv";
+
+config({ path: fileURLToPath(new URL("../../../.env", import.meta.url)) });
+config();
 
 const envSchema = z.object({
   DATABASE_URL: z.string().min(1).optional(),

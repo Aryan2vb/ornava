@@ -8,8 +8,10 @@ overrides:
 
 onlyBuiltDependencies:
   - esbuild
+  - msgpackr-extract
   - sharp
 
 allowBuilds:
   esbuild: true
+  msgpackr-extract: true
   sharp: true

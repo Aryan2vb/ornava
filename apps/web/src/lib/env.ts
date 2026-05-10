@@ -80,6 +80,18 @@ const envSchema = z.object({
     emptyStringToUndefined,
     z.string().min(1).default("ornava-default-v1"),
   ),
+  IMAGE_MODEL_STUDIO: z.preprocess(
+    emptyStringToUndefined,
+    z.string().min(1).optional(),
+  ),
+  IMAGE_MODEL_ON_MODEL: z.preprocess(
+    emptyStringToUndefined,
+    z.string().min(1).optional(),
+  ),
+  IMAGE_MODEL_CLOSE_UP: z.preprocess(
+    emptyStringToUndefined,
+    z.string().min(1).optional(),
+  ),
 });
 
 type RawWebEnv = {
@@ -102,6 +114,9 @@ type RawWebEnv = {
   R2_SECRET_ACCESS_KEY?: string;
   R2_ORIGINALS_BUCKET?: string;
   IMAGE_MODEL_DEFAULT?: string;
+  IMAGE_MODEL_STUDIO?: string;
+  IMAGE_MODEL_ON_MODEL?: string;
+  IMAGE_MODEL_CLOSE_UP?: string;
 };
 
 export function parseWebEnv(rawEnv: RawWebEnv) {
@@ -146,4 +161,7 @@ export const env = parseWebEnv({
   R2_SECRET_ACCESS_KEY: process.env.R2_SECRET_ACCESS_KEY,
   R2_ORIGINALS_BUCKET: process.env.R2_ORIGINALS_BUCKET,
   IMAGE_MODEL_DEFAULT: process.env.IMAGE_MODEL_DEFAULT,
+  IMAGE_MODEL_STUDIO: process.env.IMAGE_MODEL_STUDIO,
+  IMAGE_MODEL_ON_MODEL: process.env.IMAGE_MODEL_ON_MODEL,
+  IMAGE_MODEL_CLOSE_UP: process.env.IMAGE_MODEL_CLOSE_UP,
 });

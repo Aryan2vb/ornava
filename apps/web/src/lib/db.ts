@@ -1,4 +1,9 @@
 import { Pool } from "pg";
+import type {
+  GenerationMode,
+  GenerationStatus,
+  GenerationStatusResponse,
+} from "@ornava/shared";
 import { env } from "./env";
 import { normalizeEmail } from "./identity";
 
@@ -44,6 +49,21 @@ export type ImageRow = {
   user_id: string;
   original_object_key: string;
   status: "created" | "uploaded" | "failed" | "deleted";
+};
+
+export type GenerationRow = {
+  id: string;
+  user_id: string;
+  image_id: string;
+  mode: GenerationMode;
+  status: GenerationStatus;
+  model_route: string;
+  provider: string | null;
+  provider_model_id: string | null;
+  output_object_key: string | null;
+  failure_code: string | null;
+  failure_message_safe: string | null;
+  generation_duration_ms: number | null;
 };
 
 export async function upsertUserFromOAuthProfile(input: {
@@ -132,4 +152,116 @@ export async function markImageUploaded(input: {
   );
 
   return result.rows[0] ?? null;
+}
+
+export async function getUploadedImageForUser(input: {
+  userId: string;
+  imageId: string;
+}) {
+  const result = await getPool().query<ImageRow>(
+    `
+      select id, user_id, original_object_key, status
+      from images
+      where id = $1
+        and user_id = $2
+        and status = 'uploaded'
+    `,
+    [input.imageId, input.userId],
+  );
+
+  return result.rows[0] ?? null;
+}
+
+export async function createGeneration(input: {
+  userId: string;
+  imageId: string;
+  mode: GenerationMode;
+  modelRoute: string;
+  clientRequestId: string;
+}) {
+  const result = await getPool().query<GenerationRow>(
+    `
+      insert into generations (
+        user_id,
+        image_id,
+        mode,
+        status,
+        model_route,
+        prompt_template_version,
+        client_request_id
+      )
+      values ($1, $2, $3, 'queued', $4, 'phase1-v1', $5)
+      on conflict (user_id, client_request_id)
+      do update set updated_at = now()
+      returning
+        id,
+        user_id,
+        image_id,
+        mode,
+        status,
+        model_route,
+        provider,
+        provider_model_id,
+        output_object_key,
+        failure_code,
+        failure_message_safe,
+        generation_duration_ms
+    `,
+    [
+      input.userId,
+      input.imageId,
+      input.mode,
+      input.modelRoute,
+      input.clientRequestId,
+    ],
+  );
+
+  return result.rows[0];
+}
+
+export async function getGenerationForUser(input: {
+  userId: string;
+  generationId: string;
+}) {
+  const result = await getPool().query<GenerationRow>(
+    `
+      select
+        id,
+        user_id,
+        image_id,
+        mode,
+        status,
+        model_route,
+        provider,
+        provider_model_id,
+        output_object_key,
+        failure_code,
+        failure_message_safe,
+        generation_duration_ms
+      from generations
+      where id = $1
+        and user_id = $2
+    `,
+    [input.generationId, input.userId],
+  );
+
+  return result.rows[0] ?? null;
+}
+
+export function toGenerationStatusResponse(
+  generation: GenerationRow,
+): GenerationStatusResponse {
+  return {
+    generationId: generation.id,
+    imageId: generation.image_id,
+    mode: generation.mode,
+    status: generation.status,
+    modelRoute: generation.model_route,
+    provider: generation.provider ?? undefined,
+    providerModelId: generation.provider_model_id ?? undefined,
+    outputUrl: generation.output_object_key ?? undefined,
+    failureCode: generation.failure_code ?? undefined,
+    failureMessage: generation.failure_message_safe ?? undefined,
+    generationDurationMs: generation.generation_duration_ms ?? undefined,
+  };
 }
