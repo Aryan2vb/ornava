@@ -12,6 +12,10 @@ export type ImageGenerationRequest = {
   generationId: string;
   userId: string;
   mode: GenerationMode;
+  model: {
+    route: string;
+    providerModelId: string;
+  };
   inputImage: {
     objectKey: string;
     signedUrl: string;
