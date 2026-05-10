@@ -34,7 +34,8 @@ a {
 }
 
 button,
-input {
+input,
+select {
   font: inherit;
 }
 
@@ -57,6 +58,12 @@ input {
   background: #ffffff;
   color: var(--dark);
   padding: 0 14px;
+}
+
+.field-label {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
 }
 
 .input:disabled,
@@ -162,6 +169,15 @@ input {
 
 .compact-panel {
   gap: 10px;
+}
+
+.button-row {
+  display: flex;
+  gap: 10px;
+}
+
+.button-row .button {
+  flex: 1;
 }
 
 .result-meta {

@@ -1,5 +1,7 @@
 import { Pool } from "pg";
 import type {
+  FeedbackRating,
+  FeedbackReason,
   GenerationMode,
   GenerationStatus,
   GenerationStatusResponse,
@@ -65,6 +67,15 @@ export type GenerationRow = {
   failure_code: string | null;
   failure_message_safe: string | null;
   generation_duration_ms: number | null;
+};
+
+export type GenerationFeedbackRow = {
+  id: string;
+  user_id: string;
+  generation_id: string;
+  rating: FeedbackRating;
+  reason: FeedbackReason | null;
+  free_text: string | null;
 };
 
 export async function upsertUserFromOAuthProfile(input: {
@@ -179,6 +190,7 @@ export async function createGeneration(input: {
   mode: GenerationMode;
   modelRoute: string;
   clientRequestId: string;
+  previousGenerationId?: string;
 }) {
   const result = await getPool().query<GenerationRow>(
     `
@@ -189,9 +201,10 @@ export async function createGeneration(input: {
         status,
         model_route,
         prompt_template_version,
-        client_request_id
+        client_request_id,
+        previous_generation_id
       )
-      values ($1, $2, $3, 'queued', $4, 'phase1-v1', $5)
+      values ($1, $2, $3, 'queued', $4, 'phase1-v1', $5, $6)
       on conflict (user_id, client_request_id)
       do update set updated_at = now()
       returning
@@ -214,6 +227,7 @@ export async function createGeneration(input: {
       input.mode,
       input.modelRoute,
       input.clientRequestId,
+      input.previousGenerationId ?? null,
     ],
   );
 
@@ -278,6 +292,37 @@ export async function getCompletedGenerationResultForUser(input: {
   );
 
   return result.rows[0] ?? null;
+}
+
+export async function createGenerationFeedback(input: {
+  userId: string;
+  generationId: string;
+  rating: FeedbackRating;
+  reason?: FeedbackReason;
+  freeText?: string;
+}) {
+  const result = await getPool().query<GenerationFeedbackRow>(
+    `
+      insert into generation_feedback (
+        user_id,
+        generation_id,
+        rating,
+        reason,
+        free_text
+      )
+      values ($1, $2, $3, $4, $5)
+      returning id, user_id, generation_id, rating, reason, free_text
+    `,
+    [
+      input.userId,
+      input.generationId,
+      input.rating,
+      input.reason ?? null,
+      input.freeText ?? null,
+    ],
+  );
+
+  return result.rows[0];
 }
 
 export function toGenerationStatusResponse(
