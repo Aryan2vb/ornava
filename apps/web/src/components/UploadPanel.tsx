@@ -8,6 +8,7 @@ import type {
 } from "@ornava/shared";
 import { useRouter } from "next/navigation";
 import { useRef, useState, useTransition } from "react";
+import { compressImageForGeneration } from "@/lib/image-compression";
 
 const MAX_UPLOAD_BYTES = 20_000_000;
 const SUPPORTED_TYPES = new Set(["image/jpeg", "image/png"]);
@@ -15,7 +16,12 @@ const SUPPORTED_TYPES = new Set(["image/jpeg", "image/png"]);
 type UploadState =
   | { status: "idle" }
   | { status: "uploading"; message: string }
-  | { status: "uploaded"; imageId: string; fileName: string }
+  | {
+      status: "uploaded";
+      imageId: string;
+      fileName: string;
+      compressionApplied: boolean;
+    }
   | { status: "error"; message: string };
 
 function getImageDimensions(file: File) {
@@ -74,13 +80,18 @@ export function UploadPanel() {
     try {
       setState({ status: "uploading", message: "Reading image..." });
       const dimensions = await getImageDimensions(file);
+      setState({ status: "uploading", message: "Optimizing for generation..." });
+      const generationInput = await compressImageForGeneration({
+        file,
+        dimensions,
+      });
 
       const initRequest: UploadInitRequest = {
-        fileName: file.name,
-        fileType: file.type as UploadInitRequest["fileType"],
-        fileSizeBytes: file.size,
-        width: dimensions.width,
-        height: dimensions.height,
+        fileName: generationInput.file.name,
+        fileType: generationInput.file.type as UploadInitRequest["fileType"],
+        fileSizeBytes: generationInput.file.size,
+        width: generationInput.dimensions.width,
+        height: generationInput.dimensions.height,
       };
 
       setState({ status: "uploading", message: "Preparing secure upload..." });
@@ -89,13 +100,13 @@ export function UploadPanel() {
         initRequest,
       );
 
-      setState({ status: "uploading", message: "Uploading original..." });
+      setState({ status: "uploading", message: "Uploading optimized image..." });
       const uploadResponse = await fetch(initResponse.uploadUrl, {
         method: "PUT",
         headers: {
-          "content-type": file.type,
+          "content-type": generationInput.file.type,
         },
-        body: file,
+        body: generationInput.file,
       });
 
       if (!uploadResponse.ok) {
@@ -117,6 +128,7 @@ export function UploadPanel() {
         status: "uploaded",
         imageId: completeResponse.imageId,
         fileName: file.name,
+        compressionApplied: generationInput.compressionApplied,
       });
     } catch (error) {
       setState({
@@ -146,7 +158,7 @@ export function UploadPanel() {
       <div className="panel" aria-label="Upload jewelry photo">
         <strong>JPG or PNG, up to 20MB</strong>
         <p className="copy">
-          The original image is uploaded to private R2 storage before generation.
+          Large images are optimized before upload so beta generations start faster.
         </p>
         <input
           ref={inputRef}
@@ -172,7 +184,11 @@ export function UploadPanel() {
         {state.status === "uploaded" ? (
           <div className="upload-success">
             <strong>{state.fileName}</strong>
-            <p className="copy">Original uploaded and saved.</p>
+            <p className="copy">
+              {state.compressionApplied
+                ? "Optimized image uploaded and saved."
+                : "Image uploaded and saved."}
+            </p>
           </div>
         ) : null}
       </div>
