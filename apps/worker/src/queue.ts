@@ -31,6 +31,29 @@ const adapters: Record<string, ImageModelAdapter> = {
   falImageEdit: falImageEditAdapter,
 };
 
+type GenerationTimingMetadata = {
+  r2ReadMs?: number;
+  falUploadMs?: number;
+  providerGenerationMs?: number;
+  outputDownloadMs?: number;
+  r2WriteMs?: number;
+  totalWorkerMs?: number;
+};
+
+async function measureStage<T>(
+  timings: GenerationTimingMetadata,
+  key: keyof GenerationTimingMetadata,
+  stage: () => Promise<T>,
+): Promise<T> {
+  const startedAt = Date.now();
+
+  try {
+    return await stage();
+  } finally {
+    timings[key] = Date.now() - startedAt;
+  }
+}
+
 function redisConnectionOptions() {
   const redisUrl = new URL(env.REDIS_URL);
 
@@ -47,6 +70,7 @@ export function startGenerationWorker() {
     GENERATION_QUEUE_NAME,
     async (job) => {
       const startedAt = Date.now();
+      const timings: GenerationTimingMetadata = {};
       console.info(`[worker] processing generation ${job.data.generationId}`);
 
       await markGenerationProcessing(job.data.generationId);
@@ -75,7 +99,9 @@ export function startGenerationWorker() {
       let originalImage: Awaited<ReturnType<typeof getOriginalImageObject>>;
 
       try {
-        originalImage = await getOriginalImageObject(workItem.original_object_key);
+        originalImage = await measureStage(timings, "r2ReadMs", () =>
+          getOriginalImageObject(workItem.original_object_key),
+        );
       } catch (error) {
         const rawMessage = error instanceof Error ? error.message : String(error);
         await markGenerationFailed({
@@ -92,39 +118,45 @@ export function startGenerationWorker() {
       }
 
       try {
-        const inputImageUrl = await uploadInputImageToFal({
-          bytes: originalImage.bytes,
-          mimeType: originalImage.contentType ?? workItem.file_type,
-        });
+        const inputImageUrl = await measureStage(timings, "falUploadMs", () =>
+          uploadInputImageToFal({
+            bytes: originalImage.bytes,
+            mimeType: originalImage.contentType ?? workItem.file_type,
+          }),
+        );
         const outputFormat = "jpeg";
-        const result = await adapter.submit({
-          generationId: workItem.id,
-          userId: workItem.user_id,
-          mode: workItem.mode,
-          model: {
-            route: workItem.model_route,
-            providerModelId: registryEntry.modelId,
-          },
-          inputImage: {
-            objectKey: workItem.original_object_key,
-            signedUrl: inputImageUrl,
-            mimeType: workItem.file_type,
-          },
-          prompt: buildGenerationPrompt(workItem.mode),
-          output: {
-            aspectRatio: "1:1",
-            format: outputFormat,
-            quality: "standard",
-          },
-          metadata: {
-            promptTemplateVersion: workItem.prompt_template_version,
-            clientRequestId: workItem.client_request_id,
-          },
-        });
+        const result = await measureStage(timings, "providerGenerationMs", () =>
+          adapter.submit({
+            generationId: workItem.id,
+            userId: workItem.user_id,
+            mode: workItem.mode,
+            model: {
+              route: workItem.model_route,
+              providerModelId: registryEntry.modelId,
+            },
+            inputImage: {
+              objectKey: workItem.original_object_key,
+              signedUrl: inputImageUrl,
+              mimeType: workItem.file_type,
+            },
+            prompt: buildGenerationPrompt(workItem.mode),
+            output: {
+              aspectRatio: workItem.mode === "on_model" ? "4:5" : "1:1",
+              format: outputFormat,
+              quality: "standard",
+            },
+            metadata: {
+              promptTemplateVersion: workItem.prompt_template_version,
+              clientRequestId: workItem.client_request_id,
+            },
+          }),
+        );
         const generatedBytes =
           result.outputBytes ??
           (result.outputUrl
-            ? await downloadGeneratedImage(result.outputUrl)
+            ? await measureStage(timings, "outputDownloadMs", () =>
+                downloadGeneratedImage(result.outputUrl!),
+              )
             : undefined);
 
         if (!generatedBytes) {
@@ -137,11 +169,14 @@ export function startGenerationWorker() {
           format: outputFormat,
         });
 
-        await putGeneratedImageObject({
-          objectKey: outputObjectKey,
-          bytes: generatedBytes,
-          contentType: contentTypeForOutputFormat(outputFormat),
-        });
+        await measureStage(timings, "r2WriteMs", () =>
+          putGeneratedImageObject({
+            objectKey: outputObjectKey,
+            bytes: generatedBytes,
+            contentType: contentTypeForOutputFormat(outputFormat),
+          }),
+        );
+        timings.totalWorkerMs = Date.now() - startedAt;
 
         await markGenerationCompleted({
           generationId: workItem.id,
@@ -152,7 +187,10 @@ export function startGenerationWorker() {
           adapterVersion: FAL_IMAGE_EDIT_ADAPTER_VERSION,
           generationDurationMs: Date.now() - startedAt,
           estimatedCostMinor: result.costEstimateMinor,
-          rawProviderMetadata: result.rawMetadata,
+          rawProviderMetadata: {
+            ...(result.rawMetadata ?? {}),
+            timings,
+          },
         });
 
         console.info(

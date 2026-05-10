@@ -1,10 +1,12 @@
 import { fal } from "@fal-ai/client";
 import type {
+  GenerationMode,
   ImageGenerationRequest,
   ImageGenerationResult,
   ImageModelAdapter,
   NormalizedGenerationError,
   OutputFormat,
+  OutputQuality,
 } from "@ornava/shared";
 import { env } from "../env";
 
@@ -15,6 +17,9 @@ type FalImageResult = {
   width?: number;
   height?: number;
 };
+
+type FalImageSize = "square_hd" | "portrait_4_3";
+type FalQuality = "low" | "medium" | "high";
 
 function asRecord(value: unknown): Record<string, unknown> | undefined {
   return value && typeof value === "object"
@@ -84,18 +89,42 @@ export async function uploadInputImageToFal(input: {
 }
 
 export function buildFalEditInput(input: {
+  mode: GenerationMode;
   prompt: string;
   inputImageUrl: string;
   outputFormat: OutputFormat;
+  outputQuality: OutputQuality;
 }) {
   return {
     prompt: input.prompt,
     image_urls: [input.inputImageUrl],
-    image_size: "auto",
-    quality: "high",
+    image_size: falImageSizeForMode(input.mode),
+    quality: falQualityForOutputQuality(input.outputQuality),
     num_images: 1,
     output_format: input.outputFormat,
   };
+}
+
+export function falImageSizeForMode(mode: GenerationMode): FalImageSize {
+  const imageSizeByMode: Record<GenerationMode, FalImageSize> = {
+    studio: "square_hd",
+    close_up: "square_hd",
+    on_model: "portrait_4_3",
+  };
+
+  return imageSizeByMode[mode];
+}
+
+export function falQualityForOutputQuality(
+  quality: OutputQuality,
+): FalQuality {
+  const qualityMap: Record<OutputQuality, FalQuality> = {
+    draft: "low",
+    standard: "medium",
+    high: "high",
+  };
+
+  return qualityMap[quality];
 }
 
 export const falImageEditAdapter: ImageModelAdapter = {
@@ -109,9 +138,11 @@ export const falImageEditAdapter: ImageModelAdapter = {
     const startedAt = Date.now();
     const result = await fal.subscribe(request.model.providerModelId, {
       input: buildFalEditInput({
+        mode: request.mode,
         prompt: request.prompt,
         inputImageUrl: request.inputImage.signedUrl,
         outputFormat: request.output.format,
+        outputQuality: request.output.quality,
       }),
       logs: true,
     } as never);
@@ -129,6 +160,8 @@ export const falImageEditAdapter: ImageModelAdapter = {
         adapterVersion: FAL_IMAGE_EDIT_ADAPTER_VERSION,
         modelRoute: request.model.route,
         falRequestId: result.requestId || null,
+        falImageSize: falImageSizeForMode(request.mode),
+        falQuality: falQualityForOutputQuality(request.output.quality),
       },
     };
   },
