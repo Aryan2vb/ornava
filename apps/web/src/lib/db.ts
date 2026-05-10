@@ -6,6 +6,7 @@ import type {
 } from "@ornava/shared";
 import { env } from "./env";
 import { normalizeEmail } from "./identity";
+import type { GenerationResultRow } from "./result";
 
 declare global {
   // eslint-disable-next-line no-var
@@ -241,6 +242,37 @@ export async function getGenerationForUser(input: {
       from generations
       where id = $1
         and user_id = $2
+    `,
+    [input.generationId, input.userId],
+  );
+
+  return result.rows[0] ?? null;
+}
+
+export async function getCompletedGenerationResultForUser(input: {
+  userId: string;
+  generationId: string;
+}) {
+  const result = await getPool().query<GenerationResultRow>(
+    `
+      select
+        g.id,
+        g.image_id,
+        g.mode,
+        g.status,
+        g.model_route,
+        g.provider,
+        g.provider_model_id,
+        g.provider_job_id,
+        g.generation_duration_ms,
+        i.original_object_key,
+        g.output_object_key
+      from generations g
+      join images i on i.id = g.image_id
+      where g.id = $1
+        and g.user_id = $2
+        and g.status = 'completed'
+        and g.output_object_key is not null
     `,
     [input.generationId, input.userId],
   );

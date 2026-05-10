@@ -9,6 +9,7 @@ import type {
 import { GENERATION_MODES } from "@ornava/shared";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState, useTransition } from "react";
+import { buildResultPagePath } from "@/lib/result";
 
 const modeLabels: Record<GenerationMode, string> = {
   on_model: "On-Model",
@@ -121,6 +122,9 @@ export function GenerationPanel() {
 
         if (!isCancelled) {
           setGenerationStatus(response);
+          if (response.status === "completed") {
+            router.replace(buildResultPagePath(response.generationId));
+          }
         }
       } catch {
         if (!isCancelled) {
@@ -138,7 +142,7 @@ export function GenerationPanel() {
       isCancelled = true;
       window.clearInterval(interval);
     };
-  }, [searchParams, state]);
+  }, [router, searchParams, state]);
 
   return (
     <>
@@ -190,11 +194,15 @@ export function GenerationPanel() {
       </div>
       <button
         className="button"
-        disabled={!generationStatus}
+        disabled={!generationStatus || generationStatus.status !== "completed"}
         type="button"
-        onClick={() => router.push("/result")}
+        onClick={() => {
+          if (generationStatus) {
+            router.push(buildResultPagePath(generationStatus.generationId));
+          }
+        }}
       >
-        View result placeholder
+        View result
       </button>
     </>
   );

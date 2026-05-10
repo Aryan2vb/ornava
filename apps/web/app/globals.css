@@ -160,6 +160,47 @@ input {
   padding: 12px;
 }
 
+.compact-panel {
+  gap: 10px;
+}
+
+.result-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.image-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.image-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+}
+
+.image-card figcaption {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.image-card img {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #ffffff;
+  object-fit: contain;
+}
+
 .nav {
   display: grid;
   grid-template-columns: repeat(4, 1fr);

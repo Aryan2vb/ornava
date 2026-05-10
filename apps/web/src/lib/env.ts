@@ -76,6 +76,10 @@ const envSchema = z.object({
     emptyStringToUndefined,
     z.string().min(1).default("ornava-originals"),
   ),
+  R2_GENERATED_BUCKET: z.preprocess(
+    emptyStringToUndefined,
+    z.string().min(1).default("ornava-generated"),
+  ),
   IMAGE_MODEL_DEFAULT: z.preprocess(
     emptyStringToUndefined,
     z.string().min(1).default("ornava-default-v1"),
@@ -113,6 +117,7 @@ type RawWebEnv = {
   R2_ACCESS_KEY_ID?: string;
   R2_SECRET_ACCESS_KEY?: string;
   R2_ORIGINALS_BUCKET?: string;
+  R2_GENERATED_BUCKET?: string;
   IMAGE_MODEL_DEFAULT?: string;
   IMAGE_MODEL_STUDIO?: string;
   IMAGE_MODEL_ON_MODEL?: string;
@@ -160,6 +165,7 @@ export const env = parseWebEnv({
   R2_ACCESS_KEY_ID: process.env.R2_ACCESS_KEY_ID,
   R2_SECRET_ACCESS_KEY: process.env.R2_SECRET_ACCESS_KEY,
   R2_ORIGINALS_BUCKET: process.env.R2_ORIGINALS_BUCKET,
+  R2_GENERATED_BUCKET: process.env.R2_GENERATED_BUCKET,
   IMAGE_MODEL_DEFAULT: process.env.IMAGE_MODEL_DEFAULT,
   IMAGE_MODEL_STUDIO: process.env.IMAGE_MODEL_STUDIO,
   IMAGE_MODEL_ON_MODEL: process.env.IMAGE_MODEL_ON_MODEL,

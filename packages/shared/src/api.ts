@@ -57,6 +57,30 @@ export type GenerationStatusResponse = {
   queuePosition?: number;
 };
 
+export type GenerationResultResponse = {
+  generationId: string;
+  imageId: string;
+  mode: GenerationMode;
+  status: Extract<GenerationStatus, "completed">;
+  modelRoute: string;
+  provider?: string;
+  providerModelId?: string;
+  providerJobId?: string;
+  generationDurationMs?: number;
+  assets: {
+    original: {
+      url: string;
+      objectKey: string;
+      expiresAt: string;
+    };
+    generated: {
+      url: string;
+      objectKey: string;
+      expiresAt: string;
+    };
+  };
+};
+
 export type SubmitFeedbackRequest = {
   rating: FeedbackRating;
   reason?: FeedbackReason;

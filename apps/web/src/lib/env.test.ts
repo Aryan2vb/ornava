@@ -12,6 +12,7 @@ test("parseWebEnv treats empty optional values as unset", () => {
   assert.equal(env.GOOGLE_CLIENT_ID, undefined);
   assert.equal(env.DEV_AUTH_EMAIL, undefined);
   assert.equal(env.IMAGE_MODEL_DEFAULT, "ornava-default-v1");
+  assert.equal(env.R2_GENERATED_BUCKET, "ornava-generated");
 });
 
 test("getRequiredAuthSecret rejects missing production secrets", () => {

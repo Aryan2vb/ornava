@@ -1,4 +1,4 @@
-import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { GetObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { env } from "./env";
 
@@ -41,6 +41,26 @@ export async function createOriginalUploadUrl(input: {
 
   return {
     uploadUrl,
+    expiresAt: new Date(Date.now() + expiresInSeconds * 1000).toISOString(),
+  };
+}
+
+export async function createObjectReadUrl(input: {
+  bucket: string;
+  objectKey: string;
+}) {
+  const expiresInSeconds = 15 * 60;
+  const command = new GetObjectCommand({
+    Bucket: input.bucket,
+    Key: input.objectKey,
+  });
+
+  const url = await getSignedUrl(getR2Client(), command, {
+    expiresIn: expiresInSeconds,
+  });
+
+  return {
+    url,
     expiresAt: new Date(Date.now() + expiresInSeconds * 1000).toISOString(),
   };
 }
