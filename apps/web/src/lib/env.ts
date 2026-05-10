@@ -60,6 +60,22 @@ const envSchema = z.object({
     emptyStringToUndefined,
     z.string().min(1).optional(),
   ),
+  R2_ACCOUNT_ID: z.preprocess(
+    emptyStringToUndefined,
+    z.string().min(1).optional(),
+  ),
+  R2_ACCESS_KEY_ID: z.preprocess(
+    emptyStringToUndefined,
+    z.string().min(1).optional(),
+  ),
+  R2_SECRET_ACCESS_KEY: z.preprocess(
+    emptyStringToUndefined,
+    z.string().min(1).optional(),
+  ),
+  R2_ORIGINALS_BUCKET: z.preprocess(
+    emptyStringToUndefined,
+    z.string().min(1).default("ornava-originals"),
+  ),
   IMAGE_MODEL_DEFAULT: z.preprocess(
     emptyStringToUndefined,
     z.string().min(1).default("ornava-default-v1"),
@@ -81,6 +97,10 @@ type RawWebEnv = {
   ADMIN_EMAILS?: string;
   DATABASE_URL?: string;
   REDIS_URL?: string;
+  R2_ACCOUNT_ID?: string;
+  R2_ACCESS_KEY_ID?: string;
+  R2_SECRET_ACCESS_KEY?: string;
+  R2_ORIGINALS_BUCKET?: string;
   IMAGE_MODEL_DEFAULT?: string;
 };
 
@@ -121,5 +141,9 @@ export const env = parseWebEnv({
   ADMIN_EMAILS: process.env.ADMIN_EMAILS,
   DATABASE_URL: process.env.DATABASE_URL,
   REDIS_URL: process.env.REDIS_URL,
+  R2_ACCOUNT_ID: process.env.R2_ACCOUNT_ID,
+  R2_ACCESS_KEY_ID: process.env.R2_ACCESS_KEY_ID,
+  R2_SECRET_ACCESS_KEY: process.env.R2_SECRET_ACCESS_KEY,
+  R2_ORIGINALS_BUCKET: process.env.R2_ORIGINALS_BUCKET,
   IMAGE_MODEL_DEFAULT: process.env.IMAGE_MODEL_DEFAULT,
 });

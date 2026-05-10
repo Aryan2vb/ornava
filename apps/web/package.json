@@ -12,9 +12,11 @@
     "test": "tsx --test 'src/**/*.test.ts'"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1045.0",
+    "@aws-sdk/s3-request-presigner": "^3.1045.0",
     "@ornava/shared": "workspace:*",
-    "next-auth": "^4.24.14",
     "next": "^15.0.0",
+    "next-auth": "^4.24.14",
     "pg": "^8.20.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
