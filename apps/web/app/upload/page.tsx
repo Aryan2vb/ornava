@@ -1,5 +1,5 @@
-import Link from "next/link";
 import { PhoneShell } from "@/components/PhoneShell";
+import { UploadPanel } from "@/components/UploadPanel";
 
 export default function UploadPage() {
   return (
@@ -8,19 +8,7 @@ export default function UploadPage() {
         <div className="eyebrow">Step 1</div>
         <h1 className="title">Upload jewelry photos</h1>
       </div>
-      <div className="panel" aria-label="Upload dropzone placeholder">
-        <strong>JPG or PNG, up to 20MB</strong>
-        <p className="copy">
-          The implementation will upload directly to private R2 storage using a
-          signed URL, then create a compressed working copy for generation.
-        </p>
-        <button className="button secondary" type="button">
-          Choose photo
-        </button>
-      </div>
-      <Link className="button" href="/generating">
-        Continue to generation
-      </Link>
+      <UploadPanel />
     </PhoneShell>
   );
 }
