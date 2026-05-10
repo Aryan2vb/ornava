@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getToken } from "next-auth/jwt";
-import { env } from "./src/lib/env";
+import { getRequiredAuthSecret } from "./src/lib/env";
 
 const protectedPrefixes = [
   "/onboarding",
@@ -23,7 +23,7 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const token = await getToken({
     req: request,
-    secret: env.NEXTAUTH_SECRET ?? env.AUTH_SECRET ?? "ornava-dev-secret",
+    secret: getRequiredAuthSecret(process.env),
   });
 
   if (!isProtectedPath(pathname) && !isProtectedApiPath(pathname)) {

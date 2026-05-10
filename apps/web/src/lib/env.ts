@@ -66,7 +66,47 @@ const envSchema = z.object({
   ),
 });
 
-export const env = envSchema.parse({
+type RawWebEnv = {
+  NEXT_PUBLIC_APP_URL?: string;
+  NEXT_PUBLIC_POSTHOG_KEY?: string;
+  NEXT_PUBLIC_POSTHOG_HOST?: string;
+  NEXTAUTH_URL?: string;
+  NEXTAUTH_SECRET?: string;
+  AUTH_SECRET?: string;
+  AUTH_TRUST_HOST?: string;
+  GOOGLE_CLIENT_ID?: string;
+  GOOGLE_CLIENT_SECRET?: string;
+  DEV_AUTH_EMAIL?: string;
+  DEV_AUTH_CODE?: string;
+  ADMIN_EMAILS?: string;
+  DATABASE_URL?: string;
+  REDIS_URL?: string;
+  IMAGE_MODEL_DEFAULT?: string;
+};
+
+export function parseWebEnv(rawEnv: RawWebEnv) {
+  return envSchema.parse(rawEnv);
+}
+
+export function getRequiredAuthSecret(rawEnv: {
+  NODE_ENV?: string;
+  NEXTAUTH_SECRET?: string;
+  AUTH_SECRET?: string;
+}) {
+  const secret = rawEnv.NEXTAUTH_SECRET || rawEnv.AUTH_SECRET;
+
+  if (secret) {
+    return secret;
+  }
+
+  if (rawEnv.NODE_ENV === "production") {
+    throw new Error("NEXTAUTH_SECRET or AUTH_SECRET is required in production.");
+  }
+
+  return "ornava-dev-secret";
+}
+
+export const env = parseWebEnv({
   NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
   NEXT_PUBLIC_POSTHOG_KEY: process.env.NEXT_PUBLIC_POSTHOG_KEY,
   NEXT_PUBLIC_POSTHOG_HOST: process.env.NEXT_PUBLIC_POSTHOG_HOST,

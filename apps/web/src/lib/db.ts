@@ -1,5 +1,6 @@
 import { Pool } from "pg";
 import { env } from "./env";
+import { normalizeEmail } from "./identity";
 
 declare global {
   // eslint-disable-next-line no-var
@@ -43,6 +44,12 @@ export async function upsertUserFromOAuthProfile(input: {
   name?: string | null;
   image?: string | null;
 }) {
+  const email = normalizeEmail(input.email);
+
+  if (!email) {
+    throw new Error("A non-empty email is required to upsert an app user.");
+  }
+
   const result = await getPool().query<AppUserRow>(
     `
       insert into app_users (email, name, avatar_url, last_seen_at)
@@ -55,7 +62,7 @@ export async function upsertUserFromOAuthProfile(input: {
         updated_at = now()
       returning id, email, name, avatar_url, beta_cohort
     `,
-    [input.email, input.name ?? null, input.image ?? null],
+    [email, input.name ?? null, input.image ?? null],
   );
 
   return result.rows[0];

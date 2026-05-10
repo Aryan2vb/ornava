@@ -2,6 +2,10 @@ packages:
   - "apps/*"
   - "packages/*"
 
+overrides:
+  "next>postcss": "8.5.14"
+  postcss: "8.5.14"
+
 onlyBuiltDependencies:
   - esbuild
   - sharp

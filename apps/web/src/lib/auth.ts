@@ -1,8 +1,9 @@
 import type { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import GoogleProvider from "next-auth/providers/google";
-import { env } from "./env";
+import { env, getRequiredAuthSecret } from "./env";
 import { upsertUserFromOAuthProfile } from "./db";
+import { normalizeEmail } from "./identity";
 
 const googleConfigured = Boolean(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET);
 const devCredentialsConfigured = Boolean(
@@ -41,19 +42,22 @@ export const authOptions: NextAuthOptions = {
                 return null;
               }
 
+              const email = normalizeEmail(credentials.email);
+
               if (
-                credentials?.email === env.DEV_AUTH_EMAIL &&
+                email &&
+                email === normalizeEmail(env.DEV_AUTH_EMAIL) &&
                 credentials?.code === env.DEV_AUTH_CODE
               ) {
                 const dbUser = await upsertUserFromOAuthProfile({
-                  email: credentials.email,
-                  name: credentials.email.split("@")[0],
+                  email,
+                  name: email.split("@")[0],
                 });
 
                 return {
                   id: dbUser.id,
-                  email: dbUser.email ?? credentials.email,
-                  name: dbUser.name ?? credentials.email,
+                  email: dbUser.email ?? email,
+                  name: dbUser.name ?? email,
                 };
               }
 
@@ -63,7 +67,7 @@ export const authOptions: NextAuthOptions = {
         ]
       : []),
   ],
-  secret: env.NEXTAUTH_SECRET ?? env.AUTH_SECRET ?? "ornava-dev-secret",
+  secret: getRequiredAuthSecret(process.env),
   session: {
     strategy: "jwt",
   },
@@ -72,12 +76,14 @@ export const authOptions: NextAuthOptions = {
   },
   callbacks: {
     async signIn({ user }) {
-      return Boolean(user.email);
+      return Boolean(normalizeEmail(user.email));
     },
     async jwt({ token, user }) {
-      if (user?.email) {
+      const email = normalizeEmail(user?.email);
+
+      if (email) {
         const dbUser = await upsertUserFromOAuthProfile({
-          email: user.email,
+          email,
           name: user.name,
           image: user.image,
         });
