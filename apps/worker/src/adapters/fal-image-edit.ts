@@ -4,6 +4,7 @@ import type {
   ImageGenerationResult,
   ImageModelAdapter,
   NormalizedGenerationError,
+  OutputFormat,
 } from "@ornava/shared";
 import { env } from "../env";
 
@@ -82,6 +83,21 @@ export async function uploadInputImageToFal(input: {
   );
 }
 
+export function buildFalEditInput(input: {
+  prompt: string;
+  inputImageUrl: string;
+  outputFormat: OutputFormat;
+}) {
+  return {
+    prompt: input.prompt,
+    image_urls: [input.inputImageUrl],
+    image_size: "auto",
+    quality: "high",
+    num_images: 1,
+    output_format: input.outputFormat,
+  };
+}
+
 export const falImageEditAdapter: ImageModelAdapter = {
   async submit(request: ImageGenerationRequest): Promise<ImageGenerationResult> {
     if (!env.FAL_KEY) {
@@ -92,12 +108,11 @@ export const falImageEditAdapter: ImageModelAdapter = {
 
     const startedAt = Date.now();
     const result = await fal.subscribe(request.model.providerModelId, {
-      input: {
+      input: buildFalEditInput({
         prompt: request.prompt,
-        image_urls: [request.inputImage.signedUrl],
-        num_images: 1,
-        output_format: request.output.format === "jpeg" ? "jpg" : request.output.format,
-      },
+        inputImageUrl: request.inputImage.signedUrl,
+        outputFormat: request.output.format,
+      }),
       logs: true,
     } as never);
     const image = extractFalImageResult(result.data);

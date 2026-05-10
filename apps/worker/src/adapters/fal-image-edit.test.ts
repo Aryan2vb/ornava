@@ -1,9 +1,20 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  buildFalEditInput,
   downloadGeneratedImage,
   extractFalImageResult,
 } from "./fal-image-edit";
+
+test("buildFalEditInput keeps jpeg as fal's documented output format enum", () => {
+  const input = buildFalEditInput({
+    prompt: "Create a catalog image",
+    inputImageUrl: "https://fal.media/input.jpg",
+    outputFormat: "jpeg",
+  });
+
+  assert.equal(input.output_format, "jpeg");
+});
 
 test("extractFalImageResult reads the first image from fal image arrays", () => {
   const result = extractFalImageResult({
