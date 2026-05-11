@@ -37,15 +37,16 @@ export async function POST(request: NextRequest) {
     token.hasInviteCode = true;
     const newToken = await encode({ token, secret });
     const response = NextResponse.json({ ok: true });
+    const useSecureCookie = request.url.startsWith("https://");
     response.cookies.set({
-      name: process.env.NODE_ENV === "production"
+      name: useSecureCookie
         ? "__Secure-next-auth.session-token"
         : "next-auth.session-token",
       value: newToken,
       httpOnly: true,
       sameSite: "lax",
       path: "/",
-      secure: process.env.NODE_ENV === "production",
+      secure: useSecureCookie,
     });
     return response;
   }
