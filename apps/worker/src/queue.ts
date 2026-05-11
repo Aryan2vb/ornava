@@ -57,11 +57,13 @@ async function measureStage<T>(
 
 function redisConnectionOptions() {
   const redisUrl = new URL(env.REDIS_URL);
+  const useTls = redisUrl.protocol === "rediss:";
 
   return {
     host: redisUrl.hostname,
     port: Number(redisUrl.port || 6379),
     password: redisUrl.password || undefined,
+    ...(useTls ? { tls: {} } : {}),
     maxRetriesPerRequest: null,
   };
 }
