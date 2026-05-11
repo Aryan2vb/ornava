@@ -20,6 +20,9 @@ const nextConfig: NextConfig = {
   output: "standalone",
   allowedDevOrigins: getAllowedDevOrigins(),
   typedRoutes: true,
+  experimental: {
+    missingSuspenseWithCSRBailout: false,
+  },
 };
 
 export default nextConfig;

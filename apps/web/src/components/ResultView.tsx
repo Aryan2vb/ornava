@@ -63,7 +63,7 @@ const feedbackReasonOptions = Object.entries(feedbackReasonLabels) as Array<
 export function ResultView() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const generationId = searchParams.get("generationId");
+  const generationId = searchParams?.get("generationId") ?? null;
   const [state, setState] = useState<ResultState>({ status: "loading" });
   const [selectedReason, setSelectedReason] =
     useState<FeedbackReason>("stone_or_detail_changed");

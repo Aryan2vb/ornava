@@ -31,10 +31,10 @@ async function getJson<TResponse>(url: string) {
 export function GenerationPanel() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const imageId = searchParams.get("imageId");
+  const imageId = searchParams?.get("imageId") ?? null;
   const [generationStatus, setGenerationStatus] =
     useState<GenerationStatusResponse | null>(null);
-  const activeGenerationId = searchParams.get("generationId");
+  const activeGenerationId = searchParams?.get("generationId") ?? null;
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
 
   useEffect(() => {

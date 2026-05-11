@@ -85,7 +85,7 @@ function clientRequestId() {
 export function BriefPanel() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const imageId = searchParams.get("imageId");
+  const imageId = searchParams?.get("imageId") ?? null;
   const [step, setStep] = useState<BriefStep>("type");
   const [brief, setBrief] = useState<GenerationBrief>(() =>
     getDefaultGenerationBrief("necklace"),
