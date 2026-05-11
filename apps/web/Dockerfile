@@ -17,6 +17,8 @@ RUN pnpm --filter @ornava/shared exec tsc --build
 
 # Build web
 COPY apps/web/ apps/web/
+ENV NEXTAUTH_SECRET=build-placeholder
+ENV AUTH_SECRET=build-placeholder
 RUN pnpm --filter @ornava/web exec next build
 
 # Production image
