@@ -15,4 +15,5 @@ COPY tsconfig.base.json ./
 
 RUN pnpm --filter @ornava/shared exec tsc --build
 
-CMD ["node_modules/.bin/tsx", "apps/worker/src/index.ts"]
+WORKDIR /app/apps/worker
+CMD ["./node_modules/.bin/tsx", "src/index.ts"]
