@@ -12,7 +12,7 @@ export const imageModelRegistry = {
     enabled: true,
     capabilities: {
       imageToImage: true,
-      supportsAspectRatio: ["1:1", "4:5", "9:16"],
+      supportsAspectRatio: ["1:1", "4:5", "3:4", "9:16"],
       supportsMultipleInputs: false,
       supportsStreaming: false,
     },

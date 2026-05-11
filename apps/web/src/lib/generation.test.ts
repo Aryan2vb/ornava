@@ -12,10 +12,21 @@ test("validateCreateGenerationRequest accepts a valid generation request", () =>
   const request = validateCreateGenerationRequest({
     imageId: "f24dc312-5e49-494c-b07b-ccdb1766adef",
     mode: "studio",
+    generationBrief: {
+      jewelryType: "ring",
+      generationMode: "studio",
+      modelPresetId: "studio_none",
+      posePresetId: "ring_standing_studio",
+      backgroundPresetId: "warm_ivory",
+      aspectRatio: "1:1",
+      promptTemplateVersion: "guided-v2",
+    },
     clientRequestId: "upload-flow-1",
   });
 
   assert.equal(request.mode, "studio");
+  assert.equal(request.generationBrief.jewelryType, "ring");
+  assert.equal(request.generationBrief.posePresetId, "ring_standing_studio");
 });
 
 test("validateCreateGenerationRequest rejects unsupported modes", () => {
@@ -24,9 +35,60 @@ test("validateCreateGenerationRequest rejects unsupported modes", () => {
       validateCreateGenerationRequest({
         imageId: "f24dc312-5e49-494c-b07b-ccdb1766adef",
         mode: "portrait",
+        generationBrief: {
+          jewelryType: "ring",
+          generationMode: "studio",
+          modelPresetId: "studio_none",
+          posePresetId: "ring_standing_studio",
+          backgroundPresetId: "warm_ivory",
+          aspectRatio: "1:1",
+          promptTemplateVersion: "guided-v2",
+        },
         clientRequestId: "upload-flow-1",
       }),
     /Invalid enum value/,
+  );
+});
+
+test("validateCreateGenerationRequest rejects a mode that differs from the brief", () => {
+  assert.throws(
+    () =>
+      validateCreateGenerationRequest({
+        imageId: "f24dc312-5e49-494c-b07b-ccdb1766adef",
+        mode: "studio",
+        generationBrief: {
+          jewelryType: "necklace",
+          generationMode: "on_model",
+          modelPresetId: "model_neck",
+          posePresetId: "necklace_front_neck_crop",
+          backgroundPresetId: "warm_ivory",
+          aspectRatio: "4:5",
+          promptTemplateVersion: "guided-v2",
+        },
+        clientRequestId: "upload-flow-1",
+      }),
+    /generationBrief.generationMode must match mode/,
+  );
+});
+
+test("validateCreateGenerationRequest rejects incompatible pose presets", () => {
+  assert.throws(
+    () =>
+      validateCreateGenerationRequest({
+        imageId: "f24dc312-5e49-494c-b07b-ccdb1766adef",
+        mode: "on_model",
+        generationBrief: {
+          jewelryType: "ring",
+          generationMode: "on_model",
+          modelPresetId: "model_neck",
+          posePresetId: "necklace_front_neck_crop",
+          backgroundPresetId: "warm_ivory",
+          aspectRatio: "4:5",
+          promptTemplateVersion: "guided-v2",
+        },
+        clientRequestId: "upload-flow-1",
+      }),
+    /posePresetId is not compatible/,
   );
 });
 

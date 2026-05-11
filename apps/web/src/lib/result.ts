@@ -1,4 +1,5 @@
 import type {
+  GenerationBrief,
   GenerationMode,
   GenerationResultResponse,
 } from "@ornava/shared";
@@ -10,6 +11,7 @@ export type GenerationResultRow = {
   mode: GenerationMode;
   status: "completed";
   model_route: string;
+  generation_brief: GenerationBrief;
   provider: string | null;
   provider_model_id: string | null;
   provider_job_id: string | null;
@@ -36,6 +38,7 @@ export function toGenerationResultResponse(
     mode: generation.mode,
     status: generation.status,
     modelRoute: generation.model_route,
+    generationBrief: generation.generation_brief,
     provider: generation.provider ?? undefined,
     providerModelId: generation.provider_model_id ?? undefined,
     providerJobId: generation.provider_job_id ?? undefined,

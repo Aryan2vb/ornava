@@ -14,6 +14,7 @@ import { env } from "./env";
 import {
   closePool,
   getGenerationWorkItem,
+  logWorkerEventSafe,
   markGenerationCompleted,
   markGenerationFailed,
   markGenerationProcessing,
@@ -74,6 +75,17 @@ export function startGenerationWorker() {
       console.info(`[worker] processing generation ${job.data.generationId}`);
 
       await markGenerationProcessing(job.data.generationId);
+      await logWorkerEventSafe({
+        userId: job.data.userId,
+        name: "job_status_changed",
+        properties: {
+          generationId: job.data.generationId,
+          imageId: job.data.imageId,
+          mode: job.data.mode,
+          status: "processing",
+          modelRoute: job.data.modelRoute,
+        },
+      });
 
       const workItem = await getGenerationWorkItem(job.data.generationId);
 
@@ -83,6 +95,16 @@ export function startGenerationWorker() {
           failureCode: "invalid_input_image",
           failureMessageSafe:
             "We could not find the uploaded image for this generation.",
+        });
+        await logWorkerEventSafe({
+          userId: job.data.userId,
+          name: "generation_failed",
+          properties: {
+            generationId: job.data.generationId,
+            imageId: job.data.imageId,
+            mode: job.data.mode,
+            failureCode: "invalid_input_image",
+          },
         });
         return;
       }
@@ -109,6 +131,17 @@ export function startGenerationWorker() {
           failureCode: "storage_read_failed",
           failureMessageSafe:
             "We could not read the uploaded image. Please upload it again.",
+        });
+        await logWorkerEventSafe({
+          userId: workItem.user_id,
+          name: "generation_failed",
+          properties: {
+            generationId: workItem.id,
+            imageId: workItem.image_id,
+            mode: workItem.mode,
+            failureCode: "storage_read_failed",
+            rawMessage,
+          },
         });
         console.error(
           `[worker] failed to read original image for generation ${workItem.id}`,
@@ -139,15 +172,21 @@ export function startGenerationWorker() {
               signedUrl: inputImageUrl,
               mimeType: workItem.file_type,
             },
-            prompt: buildGenerationPrompt(workItem.mode),
+            prompt: buildGenerationPrompt(workItem.mode, workItem.generation_brief),
             output: {
-              aspectRatio: workItem.mode === "on_model" ? "4:5" : "1:1",
+              aspectRatio: workItem.generation_brief.aspectRatio,
               format: outputFormat,
               quality: "standard",
             },
             metadata: {
               promptTemplateVersion: workItem.prompt_template_version,
               clientRequestId: workItem.client_request_id,
+              jewelryType: workItem.generation_brief.jewelryType,
+              posePresetId: workItem.generation_brief.posePresetId,
+              backgroundPresetId: workItem.generation_brief.backgroundPresetId,
+              aspectRatio: workItem.generation_brief.aspectRatio,
+              briefPromptTemplateVersion:
+                workItem.generation_brief.promptTemplateVersion,
             },
           }),
         );
@@ -190,6 +229,26 @@ export function startGenerationWorker() {
           rawProviderMetadata: {
             ...(result.rawMetadata ?? {}),
             timings,
+            generationBrief: { ...workItem.generation_brief },
+          },
+        });
+        await logWorkerEventSafe({
+          userId: workItem.user_id,
+          name: "generation_completed",
+          properties: {
+            generationId: workItem.id,
+            imageId: workItem.image_id,
+            mode: workItem.mode,
+            modelRoute: workItem.model_route,
+            jewelryType: workItem.generation_brief.jewelryType,
+            posePresetId: workItem.generation_brief.posePresetId,
+            backgroundPresetId: workItem.generation_brief.backgroundPresetId,
+            aspectRatio: workItem.generation_brief.aspectRatio,
+            promptTemplateVersion: workItem.generation_brief.promptTemplateVersion,
+            provider: result.provider,
+            providerModelId: result.modelId,
+            providerJobId: result.providerJobId,
+            generationDurationMs: Date.now() - startedAt,
           },
         });
 
@@ -205,6 +264,18 @@ export function startGenerationWorker() {
           generationId: workItem.id,
           failureCode: normalizedError.code,
           failureMessageSafe: normalizedError.safeMessage,
+        });
+        await logWorkerEventSafe({
+          userId: workItem.user_id,
+          name: "generation_failed",
+          properties: {
+            generationId: workItem.id,
+            imageId: workItem.image_id,
+            mode: workItem.mode,
+            modelRoute: workItem.model_route,
+            failureCode: normalizedError.code,
+            rawMessage: normalizedError.rawMessage,
+          },
         });
 
         console.error(

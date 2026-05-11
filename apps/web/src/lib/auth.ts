@@ -2,7 +2,13 @@ import type { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import GoogleProvider from "next-auth/providers/google";
 import { env, getRequiredAuthSecret } from "./env";
-import { upsertUserFromOAuthProfile } from "./db";
+import {
+  checkInviteCodeValid,
+  linkInviteCodeToUser,
+  upsertUserFromOAuthProfile,
+  userHasInviteCode,
+  validateAndClaimInviteCode,
+} from "./db";
 import { normalizeDevAuthCode, normalizeEmail } from "./identity";
 
 const googleConfigured = Boolean(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET);
@@ -93,6 +99,7 @@ export const authOptions: NextAuthOptions = {
         token.email = dbUser.email;
         token.name = dbUser.name;
         token.picture = dbUser.avatar_url;
+        token.hasInviteCode = Boolean(dbUser.invite_code_id);
       }
 
       return token;
@@ -103,6 +110,7 @@ export const authOptions: NextAuthOptions = {
         session.user.email = token.email as string | null | undefined;
         session.user.name = token.name as string | null | undefined;
         session.user.image = token.picture as string | null | undefined;
+        (session as any).hasInviteCode = token.hasInviteCode as boolean;
       }
 
       return session;

@@ -2,6 +2,7 @@ import type { UploadCompleteResponse } from "@ornava/shared";
 import { NextResponse } from "next/server";
 import { z, ZodError } from "zod";
 import { markImageUploaded } from "@/lib/db";
+import { logAnalyticsEventSafe } from "@/lib/events";
 import { getRequiredUserId } from "@/lib/session";
 
 const completeUploadSchema = z.object({
@@ -27,6 +28,15 @@ export async function POST(request: Request) {
     if (!image) {
       return NextResponse.json({ error: "image_not_found" }, { status: 404 });
     }
+    await logAnalyticsEventSafe({
+      userId,
+      name: "upload_completed",
+      properties: {
+        imageId: image.id,
+        objectKey: image.original_object_key,
+        uploadPath: "direct",
+      },
+    });
 
     const response: UploadCompleteResponse = {
       imageId: image.id,

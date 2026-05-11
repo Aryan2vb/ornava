@@ -4,11 +4,13 @@ import { z, ZodError } from "zod";
 import {
   createGeneration,
   getGenerationForUser,
+  normalizeGenerationBrief,
 } from "@/lib/db";
 import {
   resolveModelRouteForMode,
   validateRetryGenerationRequest,
 } from "@/lib/generation";
+import { logAnalyticsEventSafe } from "@/lib/events";
 import { enqueueGenerationJob } from "@/lib/queue";
 import { getRequiredUserId } from "@/lib/session";
 
@@ -47,6 +49,10 @@ export async function POST(request: Request, { params }: RouteParams) {
       imageId: previousGeneration.image_id,
       mode: previousGeneration.mode,
       modelRoute,
+      generationBrief: normalizeGenerationBrief(
+        previousGeneration.generation_brief,
+        previousGeneration.mode,
+      ),
       clientRequestId: retryRequest.clientRequestId,
       previousGenerationId: previousGeneration.id,
     });
@@ -57,6 +63,22 @@ export async function POST(request: Request, { params }: RouteParams) {
       imageId: generation.image_id,
       mode: generation.mode,
       modelRoute: generation.model_route,
+    });
+    await logAnalyticsEventSafe({
+      userId,
+      name: "retry_clicked",
+      properties: {
+        generationId: generation.id,
+        previousGenerationId: previousGeneration.id,
+        imageId: generation.image_id,
+        mode: generation.mode,
+        modelRoute: generation.model_route,
+        jewelryType: generation.generation_brief.jewelryType,
+        posePresetId: generation.generation_brief.posePresetId,
+        backgroundPresetId: generation.generation_brief.backgroundPresetId,
+        aspectRatio: generation.generation_brief.aspectRatio,
+        promptTemplateVersion: generation.generation_brief.promptTemplateVersion,
+      },
     });
 
     const response: RetryGenerationResponse = {

@@ -1,5 +1,10 @@
 import { Pool } from "pg";
-import type { GenerationMode, JsonValue } from "@ornava/shared";
+import type {
+  AnalyticsEventName,
+  GenerationBrief,
+  GenerationMode,
+  JsonValue,
+} from "@ornava/shared";
 import { env } from "./env";
 
 let pool: Pool | undefined;
@@ -38,6 +43,7 @@ export type GenerationWorkItem = {
   image_id: string;
   mode: GenerationMode;
   model_route: string;
+  generation_brief: GenerationBrief;
   prompt_template_version: string;
   client_request_id: string;
   original_object_key: string;
@@ -53,6 +59,7 @@ export async function getGenerationWorkItem(generationId: string) {
         g.image_id,
         g.mode,
         g.model_route,
+        g.generation_brief,
         g.prompt_template_version,
         g.client_request_id,
         i.original_object_key,
@@ -131,6 +138,30 @@ export async function markGenerationFailed(input: {
     `,
     [input.generationId, input.failureCode, input.failureMessageSafe],
   );
+}
+
+export async function logWorkerEventSafe(input: {
+  userId?: string | null;
+  name: AnalyticsEventName;
+  properties?: Record<string, JsonValue | undefined>;
+}) {
+  try {
+    const properties = Object.fromEntries(
+      Object.entries(input.properties ?? {}).filter(
+        ([, value]) => value !== undefined,
+      ),
+    );
+
+    await getPool().query(
+      `
+        insert into events (user_id, event_name, properties)
+        values ($1, $2, $3::jsonb)
+      `,
+      [input.userId ?? null, input.name, JSON.stringify(properties)],
+    );
+  } catch (error) {
+    console.error("[worker:events]", error);
+  }
 }
 
 export async function closePool() {

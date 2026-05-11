@@ -1,0 +1,19 @@
+{
+  "mcpServers": {
+    "paper": {
+      "command": "curl",
+      "args": ["http://127.0.0.1:29979/mcp"]
+    },
+    "stitch": {
+      "type": "http",
+      "url": "https://stitch.googleapis.com/mcp",
+      "http_headers": {
+        "X-Goog-Api-Key": "${STITCH_API_KEY}"
+      }
+    },
+    "obsidian": {
+      "command": "npx",
+      "args": ["-y", "@bitbonsai/mcpvault@latest", "/Users/aryansoni/Documents/Obsidian Vault"]
+    }
+  }
+}

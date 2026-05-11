@@ -1,6 +1,42 @@
 export const GENERATION_MODES = ["on_model", "studio", "close_up"] as const;
 export type GenerationMode = (typeof GENERATION_MODES)[number];
 
+export const JEWELRY_TYPES = [
+  "necklace",
+  "ring",
+  "bracelet_bangle",
+  "earrings",
+  "pendant",
+  "other",
+] as const;
+export type JewelryType = (typeof JEWELRY_TYPES)[number];
+
+export const BACKGROUND_PRESETS = [
+  "pure_white",
+  "warm_ivory",
+  "light_gray",
+  "charcoal_black",
+  "marble",
+  "deep_red_luxury",
+  "emerald_luxury",
+] as const;
+export type BackgroundPresetId = (typeof BACKGROUND_PRESETS)[number];
+
+export const ASPECT_RATIOS = ["1:1", "4:5", "3:4"] as const;
+export type AspectRatio = (typeof ASPECT_RATIOS)[number];
+
+export const GUIDED_PROMPT_TEMPLATE_VERSION = "guided-v2" as const;
+
+export type GenerationBrief = {
+  jewelryType: JewelryType;
+  generationMode: GenerationMode;
+  modelPresetId: string;
+  posePresetId: string;
+  backgroundPresetId: BackgroundPresetId;
+  aspectRatio: AspectRatio;
+  promptTemplateVersion: typeof GUIDED_PROMPT_TEMPLATE_VERSION;
+};
+
 export const IMAGE_STATUSES = ["created", "uploaded", "failed", "deleted"] as const;
 export type ImageStatus = (typeof IMAGE_STATUSES)[number];
 

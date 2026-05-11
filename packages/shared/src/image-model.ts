@@ -4,7 +4,7 @@ import type {
   JsonValue,
 } from "./types";
 
-export type OutputAspectRatio = "1:1" | "4:5" | "9:16";
+export type OutputAspectRatio = "1:1" | "4:5" | "3:4" | "9:16";
 export type OutputFormat = "jpeg" | "png" | "webp";
 export type OutputQuality = "draft" | "standard" | "high";
 
@@ -30,7 +30,7 @@ export type ImageGenerationRequest = {
   metadata: {
     promptTemplateVersion: string;
     clientRequestId: string;
-  };
+  } & Record<string, JsonValue | undefined>;
 };
 
 export type ImageGenerationResult = {

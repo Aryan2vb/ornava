@@ -1,20 +1,14 @@
 "use client";
 
 import type {
-  CreateGenerationRequest,
-  CreateGenerationResponse,
   GenerationMode,
   GenerationStatusResponse,
 } from "@ornava/shared";
-import { GENERATION_MODES } from "@ornava/shared";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { CSSProperties } from "react";
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useEffect, useState } from "react";
 import { Icon } from "./Icon";
-import {
-  generationModeCards,
-  getGenerationProgressPercent,
-} from "@/lib/beta-ui";
+import { getGenerationProgressPercent } from "@/lib/beta-ui";
 import { buildResultPagePath } from "@/lib/result";
 
 const modeLabels: Record<GenerationMode, string> = {
@@ -22,29 +16,6 @@ const modeLabels: Record<GenerationMode, string> = {
   studio: "Studio",
   close_up: "Close-up",
 };
-
-type PanelState =
-  | { status: "idle" }
-  | { status: "creating"; message: string }
-  | { status: "queued"; generationId: string; modelRoute: string }
-  | { status: "failed"; message: string };
-
-async function postJson<TResponse>(url: string, body: unknown) {
-  const response = await fetch(url, {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-    },
-    body: JSON.stringify(body),
-  });
-
-  if (!response.ok) {
-    const errorBody = await response.json().catch(() => null);
-    throw new Error(errorBody?.error ?? "Request failed.");
-  }
-
-  return (await response.json()) as TResponse;
-}
 
 async function getJson<TResponse>(url: string) {
   const response = await fetch(url);
@@ -61,57 +32,10 @@ export function GenerationPanel() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const imageId = searchParams.get("imageId");
-  const [state, setState] = useState<PanelState>({ status: "idle" });
   const [generationStatus, setGenerationStatus] =
     useState<GenerationStatusResponse | null>(null);
-  const activeGenerationId =
-    state.status === "queued"
-      ? state.generationId
-      : searchParams.get("generationId");
+  const activeGenerationId = searchParams.get("generationId");
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
-  const [isPending, startTransition] = useTransition();
-  const clientRequestId = useMemo(
-    () => globalThis.crypto?.randomUUID?.() ?? `${Date.now()}`,
-    [],
-  );
-
-  async function createGeneration(mode: GenerationMode) {
-    if (!imageId) {
-      setState({ status: "failed", message: "Upload an image first." });
-      return;
-    }
-
-    try {
-      setState({ status: "creating", message: "Creating generation job..." });
-
-      const request: CreateGenerationRequest = {
-        imageId,
-        mode,
-        clientRequestId,
-      };
-      const response = await postJson<CreateGenerationResponse>(
-        "/api/generations",
-        request,
-      );
-
-      setState({
-        status: "queued",
-        generationId: response.generationId,
-        modelRoute: response.modelRoute,
-      });
-      router.replace(
-        `/generating?imageId=${imageId}&generationId=${response.generationId}`,
-      );
-    } catch (error) {
-      setState({
-        status: "failed",
-        message:
-          error instanceof Error
-            ? error.message
-            : "Could not create generation job.",
-      });
-    }
-  }
 
   useEffect(() => {
     if (!activeGenerationId) {
@@ -174,7 +98,7 @@ export function GenerationPanel() {
 
   return (
     <>
-      {generationStatus || state.status === "queued" || activeGenerationId ? (
+      {generationStatus || activeGenerationId ? (
         <>
           <div className="screen-header">
             <h1 className="title">Creating image</h1>
@@ -241,9 +165,6 @@ export function GenerationPanel() {
                 {visibleStatus === "completed" ? "Ready" : "Next"}
               </span>
             </div>
-            {state.status === "queued" ? (
-              <p className="copy">Queued on {state.modelRoute}</p>
-            ) : null}
             {generationStatus?.failureMessage ? (
               <p className="status-text error">{generationStatus.failureMessage}</p>
             ) : null}
@@ -261,8 +182,8 @@ export function GenerationPanel() {
       ) : (
         <>
           <div className="screen-header">
-            <h1 className="title">Choose style</h1>
-            <p className="copy">Choose the selling context for this product photo.</p>
+            <h1 className="title">Finish brief</h1>
+            <p className="copy">Choose product type, view, background, and crop.</p>
           </div>
           <div className="row-card">
             <span className="icon-tile" style={{ width: 58, height: 58 }}>
@@ -275,78 +196,26 @@ export function GenerationPanel() {
               </span>
             </div>
           </div>
-          {GENERATION_MODES.map((mode) => {
-            const card = generationModeCards[mode];
-            const isFeatured = mode === "on_model";
-
-            return (
-              <div className={`mode-card${isFeatured ? " featured" : ""}`} key={mode}>
-                <div className="mode-card-header">
-                  <div className="mode-card-copy">
-                    <span className="icon-tile" style={isFeatured ? {
-                      background: "#2a2721",
-                      borderColor: "#514739",
-                      color: "var(--gold-bright)",
-                      height: 44,
-                      width: 44,
-                    } : { width: 62, height: 62 }}>
-                      <Icon name={card.icon} size={isFeatured ? 24 : 27} />
-                    </span>
-                    <div>
-                      <strong style={{ fontSize: isFeatured ? 18 : 17 }}>
-                        {card.title}
-                      </strong>
-                      <p className="copy">{card.description}</p>
-                    </div>
-                  </div>
-                  {isFeatured ? <span className="credit-pill">Popular</span> : null}
-                </div>
-                {isFeatured ? (
-                  <button
-                    className="button gold"
-                    disabled={!imageId || state.status === "creating" || isPending}
-                    type="button"
-                    onClick={() => {
-                      startTransition(() => {
-                        void createGeneration(mode);
-                      });
-                    }}
-                  >
-                    {state.status === "creating" || isPending ? (
-                      <span className="spinner" aria-hidden="true" />
-                    ) : (
-                      <Icon name="arrow-right" size={16} />
-                    )}
-                    {card.cta}
-                  </button>
-                ) : (
-                  <button
-                    className="button secondary"
-                    disabled={!imageId || state.status === "creating" || isPending}
-                    type="button"
-                    onClick={() => {
-                      startTransition(() => {
-                        void createGeneration(mode);
-                      });
-                    }}
-                  >
-                    {state.status === "creating" || isPending ? (
-                      <span className="spinner" aria-hidden="true" />
-                    ) : (
-                      <Icon name="arrow-right" size={16} />
-                    )}
-                    {card.cta}
-                  </button>
-                )}
-              </div>
-            );
-          })}
-          {state.status === "creating" ? (
-            <p className="status-text">{state.message}</p>
-          ) : null}
-          {state.status === "failed" ? (
-            <p className="status-text error">{state.message}</p>
-          ) : null}
+          <div className="soft-panel">
+            <div className="brand-row">
+              <Icon name="spark" size={18} />
+              <strong>Guided catalog setup</strong>
+            </div>
+            <p className="copy">No prompt needed. Select the preset details next.</p>
+          </div>
+          <button
+            className="button"
+            disabled={!imageId}
+            type="button"
+            onClick={() => {
+              if (imageId) {
+                router.push(`/brief?imageId=${imageId}`);
+              }
+            }}
+          >
+            <Icon name="arrow-right" size={17} />
+            Continue
+          </button>
         </>
       )}
       <button

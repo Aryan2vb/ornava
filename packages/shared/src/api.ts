@@ -1,6 +1,7 @@
 import type {
   FeedbackRating,
   FeedbackReason,
+  GenerationBrief,
   GenerationMode,
   GenerationStatus,
 } from "./types";
@@ -33,6 +34,7 @@ export type UploadCompleteResponse = {
 export type CreateGenerationRequest = {
   imageId: string;
   mode: GenerationMode;
+  generationBrief: GenerationBrief;
   clientRequestId: string;
 };
 
@@ -48,6 +50,7 @@ export type GenerationStatusResponse = {
   mode: GenerationMode;
   status: GenerationStatus;
   modelRoute: string;
+  generationBrief: GenerationBrief;
   provider?: string;
   providerModelId?: string;
   outputUrl?: string;
@@ -63,6 +66,7 @@ export type GenerationResultResponse = {
   mode: GenerationMode;
   status: Extract<GenerationStatus, "completed">;
   modelRoute: string;
+  generationBrief: GenerationBrief;
   provider?: string;
   providerModelId?: string;
   providerJobId?: string;

@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { ZodError } from "zod";
 import { createImageUpload } from "@/lib/db";
 import { getRequiredUserId } from "@/lib/session";
+import { logAnalyticsEventSafe } from "@/lib/events";
 import { createOriginalUploadUrl } from "@/lib/storage";
 import {
   buildOriginalObjectKey,
@@ -40,6 +41,17 @@ export async function POST(request: Request) {
       fileSizeBytes: uploadRequest.fileSizeBytes,
       width: uploadRequest.width,
       height: uploadRequest.height,
+    });
+    await logAnalyticsEventSafe({
+      userId,
+      name: "upload_started",
+      properties: {
+        imageId,
+        fileType: uploadRequest.fileType,
+        fileSizeBytes: uploadRequest.fileSizeBytes,
+        width: uploadRequest.width,
+        height: uploadRequest.height,
+      },
     });
 
     const response: UploadInitResponse = {

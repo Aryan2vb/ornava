@@ -5,6 +5,7 @@ import {
   createGenerationFeedback,
   getCompletedGenerationResultForUser,
 } from "@/lib/db";
+import { logAnalyticsEventSafe } from "@/lib/events";
 import { validateSubmitFeedbackRequest } from "@/lib/feedback";
 import { getRequiredUserId } from "@/lib/session";
 
@@ -48,6 +49,17 @@ export async function POST(request: Request, { params }: RouteParams) {
     const response: SubmitFeedbackResponse = {
       feedbackId: feedback.id,
     };
+    await logAnalyticsEventSafe({
+      userId,
+      name: "feedback_submitted",
+      properties: {
+        generationId: generation.id,
+        imageId: generation.image_id,
+        mode: generation.mode,
+        rating: feedback.rating,
+        reason: feedback.reason,
+      },
+    });
 
     return NextResponse.json(response, { status: 201 });
   } catch (error) {

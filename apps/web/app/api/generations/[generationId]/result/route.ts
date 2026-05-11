@@ -4,6 +4,7 @@ import {
   getCompletedGenerationResultForUser,
 } from "@/lib/db";
 import { env } from "@/lib/env";
+import { logAnalyticsEventSafe } from "@/lib/events";
 import { toGenerationResultResponse } from "@/lib/result";
 import { createObjectReadUrl } from "@/lib/storage";
 import { getRequiredUserId } from "@/lib/session";
@@ -50,6 +51,16 @@ export async function GET(_request: Request, { params }: RouteParams) {
       objectKey: generation.output_object_key,
     }),
   ]);
+  await logAnalyticsEventSafe({
+    userId,
+    name: "result_viewed",
+    properties: {
+      generationId: generation.id,
+      imageId: generation.image_id,
+      mode: generation.mode,
+      modelRoute: generation.model_route,
+    },
+  });
 
   return NextResponse.json(
     toGenerationResultResponse(generation, {

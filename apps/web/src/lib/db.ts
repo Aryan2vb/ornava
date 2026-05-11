@@ -2,10 +2,13 @@ import { Pool } from "pg";
 import type {
   FeedbackRating,
   FeedbackReason,
+  GenerationBrief,
   GenerationMode,
   GenerationStatus,
   GenerationStatusResponse,
+  JsonValue,
 } from "@ornava/shared";
+import { GUIDED_PROMPT_TEMPLATE_VERSION } from "@ornava/shared";
 import { env } from "./env";
 import { normalizeEmail } from "./identity";
 import type { GenerationResultRow } from "./result";
@@ -45,6 +48,7 @@ export type AppUserRow = {
   name: string | null;
   avatar_url: string | null;
   beta_cohort: string | null;
+  invite_code_id: string | null;
 };
 
 export type ImageRow = {
@@ -61,6 +65,7 @@ export type GenerationRow = {
   mode: GenerationMode;
   status: GenerationStatus;
   model_route: string;
+  generation_brief: GenerationBrief;
   provider: string | null;
   provider_model_id: string | null;
   output_object_key: string | null;
@@ -77,6 +82,87 @@ export type GenerationFeedbackRow = {
   reason: FeedbackReason | null;
   free_text: string | null;
 };
+
+export type AdminGenerationDebugRow = {
+  id: string;
+  user_id: string;
+  user_email: string | null;
+  image_id: string;
+  mode: GenerationMode;
+  status: GenerationStatus;
+  model_route: string;
+  generation_brief: GenerationBrief;
+  provider: string | null;
+  provider_model_id: string | null;
+  provider_job_id: string | null;
+  attempt_count: number;
+  failure_code: string | null;
+  failure_message_safe: string | null;
+  generation_duration_ms: number | null;
+  queue_wait_ms: number | null;
+  raw_provider_metadata: Record<string, JsonValue>;
+  feedback_rating: FeedbackRating | null;
+  feedback_reason: FeedbackReason | null;
+  event_count: number;
+  latest_event_name: string | null;
+  latest_event_at: string | null;
+  created_at: string;
+  started_at: string | null;
+  completed_at: string | null;
+};
+
+export function normalizeGenerationBrief(
+  value: unknown,
+  mode: GenerationMode,
+): GenerationBrief {
+  if (
+    value &&
+    typeof value === "object" &&
+    "jewelryType" in value &&
+    "generationMode" in value &&
+    "modelPresetId" in value &&
+    "posePresetId" in value &&
+    "backgroundPresetId" in value &&
+    "aspectRatio" in value &&
+    "promptTemplateVersion" in value
+  ) {
+    return value as GenerationBrief;
+  }
+
+  if (mode === "close_up") {
+    return {
+      jewelryType: "ring",
+      generationMode: "close_up",
+      modelPresetId: "studio_none",
+      posePresetId: "ring_stone_macro",
+      backgroundPresetId: "charcoal_black",
+      aspectRatio: "1:1",
+      promptTemplateVersion: GUIDED_PROMPT_TEMPLATE_VERSION,
+    };
+  }
+
+  if (mode === "studio") {
+    return {
+      jewelryType: "other",
+      generationMode: "studio",
+      modelPresetId: "studio_none",
+      posePresetId: "other_studio_catalog",
+      backgroundPresetId: "warm_ivory",
+      aspectRatio: "1:1",
+      promptTemplateVersion: GUIDED_PROMPT_TEMPLATE_VERSION,
+    };
+  }
+
+  return {
+    jewelryType: "necklace",
+    generationMode: "on_model",
+    modelPresetId: "model_neck",
+    posePresetId: "necklace_front_neck_crop",
+    backgroundPresetId: "warm_ivory",
+    aspectRatio: "4:5",
+    promptTemplateVersion: GUIDED_PROMPT_TEMPLATE_VERSION,
+  };
+}
 
 export async function upsertUserFromOAuthProfile(input: {
   email: string;
@@ -99,7 +185,7 @@ export async function upsertUserFromOAuthProfile(input: {
         avatar_url = coalesce(excluded.avatar_url, app_users.avatar_url),
         last_seen_at = now(),
         updated_at = now()
-      returning id, email, name, avatar_url, beta_cohort
+      returning id, email, name, avatar_url, beta_cohort, invite_code_id
     `,
     [email, input.name ?? null, input.image ?? null],
   );
@@ -209,6 +295,7 @@ export async function createGeneration(input: {
   imageId: string;
   mode: GenerationMode;
   modelRoute: string;
+  generationBrief: GenerationBrief;
   clientRequestId: string;
   previousGenerationId?: string;
 }) {
@@ -220,11 +307,12 @@ export async function createGeneration(input: {
         mode,
         status,
         model_route,
+        generation_brief,
         prompt_template_version,
         client_request_id,
         previous_generation_id
       )
-      values ($1, $2, $3, 'queued', $4, 'phase1-v1', $5, $6)
+      values ($1, $2, $3, 'queued', $4, $5::jsonb, $6, $7, $8)
       on conflict (user_id, client_request_id)
       do update set updated_at = now()
       returning
@@ -234,6 +322,7 @@ export async function createGeneration(input: {
         mode,
         status,
         model_route,
+        generation_brief,
         provider,
         provider_model_id,
         output_object_key,
@@ -246,12 +335,69 @@ export async function createGeneration(input: {
       input.imageId,
       input.mode,
       input.modelRoute,
+      JSON.stringify(input.generationBrief),
+      input.generationBrief.promptTemplateVersion,
       input.clientRequestId,
       input.previousGenerationId ?? null,
     ],
   );
 
   return result.rows[0];
+}
+
+export async function listAdminGenerationDebugRows(limit = 25) {
+  const result = await getPool().query<AdminGenerationDebugRow>(
+    `
+      select
+        g.id,
+        g.user_id,
+        u.email as user_email,
+        g.image_id,
+        g.mode,
+        g.status,
+        g.model_route,
+        g.generation_brief,
+        g.provider,
+        g.provider_model_id,
+        g.provider_job_id,
+        g.attempt_count,
+        g.failure_code,
+        g.failure_message_safe,
+        g.generation_duration_ms,
+        g.queue_wait_ms,
+        g.raw_provider_metadata,
+        gf.rating as feedback_rating,
+        gf.reason as feedback_reason,
+        coalesce(ev.event_count, 0)::int as event_count,
+        ev.latest_event_name,
+        ev.latest_event_at,
+        g.created_at::text,
+        g.started_at::text,
+        g.completed_at::text
+      from generations g
+      join app_users u on u.id = g.user_id
+      left join lateral (
+        select rating, reason
+        from generation_feedback
+        where generation_id = g.id
+        order by created_at desc
+        limit 1
+      ) gf on true
+      left join lateral (
+        select
+          count(*) as event_count,
+          (array_agg(event_name order by created_at desc))[1] as latest_event_name,
+          max(created_at)::text as latest_event_at
+        from events
+        where properties->>'generationId' = g.id::text
+      ) ev on true
+      order by g.created_at desc
+      limit $1
+    `,
+    [limit],
+  );
+
+  return result.rows;
 }
 
 export async function getGenerationForUser(input: {
@@ -267,6 +413,7 @@ export async function getGenerationForUser(input: {
         mode,
         status,
         model_route,
+        generation_brief,
         provider,
         provider_model_id,
         output_object_key,
@@ -295,6 +442,7 @@ export async function getCompletedGenerationResultForUser(input: {
         g.mode,
         g.status,
         g.model_route,
+        g.generation_brief,
         g.provider,
         g.provider_model_id,
         g.provider_job_id,
@@ -345,6 +493,157 @@ export async function createGenerationFeedback(input: {
   return result.rows[0];
 }
 
+export async function getUserCredits(userId: string) {
+  const result = await getPool().query<{ credits: number }>(
+    `select credits from app_users where id = $1`,
+    [userId],
+  );
+  return result.rows[0]?.credits ?? 0;
+}
+
+export async function deductCredit(userId: string) {
+  const result = await getPool().query<{ credits: number }>(
+    `update app_users set credits = credits - 1 where id = $1 and credits > 0 returning credits`,
+    [userId],
+  );
+  return result.rows[0] ?? null;
+}
+
+export async function grantCredits(userId: string, amount: number) {
+  await getPool().query(
+    `update app_users set credits = credits + $2 where id = $1`,
+    [userId, amount],
+  );
+}
+
+export type InviteCodeRow = {
+  id: string;
+  code: string;
+  created_by: string | null;
+  max_uses: number;
+  use_count: number;
+  created_at: string;
+};
+
+export async function validateAndClaimInviteCode(input: {
+  code: string;
+  userId: string;
+}) {
+  const result = await getPool().query<InviteCodeRow>(
+    `
+      update invite_codes
+      set use_count = use_count + 1,
+          used_by = $2,
+          used_at = now()
+      where code = $1
+        and use_count < max_uses
+      returning id, code, created_by, max_uses, use_count, created_at::text
+    `,
+    [input.code.trim().toLowerCase(), input.userId],
+  );
+
+  return result.rows[0] ?? null;
+}
+
+export async function checkInviteCodeValid(code: string) {
+  const result = await getPool().query<{ id: string }>(
+    `select id from invite_codes where code = $1 and use_count < max_uses`,
+    [code.trim().toLowerCase()],
+  );
+  return result.rows[0] ?? null;
+}
+
+export async function linkInviteCodeToUser(input: {
+  userId: string;
+  inviteCodeId: string;
+}) {
+  await getPool().query(
+    `update app_users set invite_code_id = $2 where id = $1`,
+    [input.userId, input.inviteCodeId],
+  );
+}
+
+export async function userHasInviteCode(userId: string) {
+  const result = await getPool().query<{ invite_code_id: string | null }>(
+    `select invite_code_id from app_users where id = $1`,
+    [userId],
+  );
+  return Boolean(result.rows[0]?.invite_code_id);
+}
+
+export async function createInviteCode(input: {
+  code: string;
+  createdBy: string;
+  maxUses?: number;
+}) {
+  const result = await getPool().query<InviteCodeRow>(
+    `
+      insert into invite_codes (code, created_by, max_uses)
+      values ($1, $2, $3)
+      returning id, code, created_by, max_uses, use_count, created_at::text
+    `,
+    [input.code.trim().toLowerCase(), input.createdBy, input.maxUses ?? 1],
+  );
+  return result.rows[0];
+}
+
+export async function listInviteCodesForUser(userId: string) {
+  const result = await getPool().query<InviteCodeRow>(
+    `
+      select id, code, created_by, max_uses, use_count, created_at::text
+      from invite_codes
+      where created_by = $1
+      order by created_at desc
+    `,
+    [userId],
+  );
+  return result.rows;
+}
+
+export type UserGenerationHistoryRow = {
+  id: string;
+  image_id: string;
+  mode: GenerationMode;
+  status: GenerationStatus;
+  generation_brief: GenerationBrief;
+  output_object_key: string | null;
+  feedback_rating: FeedbackRating | null;
+  feedback_reason: FeedbackReason | null;
+  generation_duration_ms: number | null;
+  created_at: string;
+};
+
+export async function listUserGenerations(userId: string, limit = 50) {
+  const result = await getPool().query<UserGenerationHistoryRow>(
+    `
+      select
+        g.id,
+        g.image_id,
+        g.mode,
+        g.status,
+        g.generation_brief,
+        g.output_object_key,
+        gf.rating as feedback_rating,
+        gf.reason as feedback_reason,
+        g.generation_duration_ms,
+        g.created_at::text
+      from generations g
+      left join lateral (
+        select rating, reason
+        from generation_feedback
+        where generation_id = g.id
+        order by created_at desc
+        limit 1
+      ) gf on true
+      where g.user_id = $1
+      order by g.created_at desc
+      limit $2
+    `,
+    [userId, limit],
+  );
+  return result.rows;
+}
+
 export function toGenerationStatusResponse(
   generation: GenerationRow,
 ): GenerationStatusResponse {
@@ -354,6 +653,10 @@ export function toGenerationStatusResponse(
     mode: generation.mode,
     status: generation.status,
     modelRoute: generation.model_route,
+    generationBrief: normalizeGenerationBrief(
+      generation.generation_brief,
+      generation.mode,
+    ),
     provider: generation.provider ?? undefined,
     providerModelId: generation.provider_model_id ?? undefined,
     outputUrl: generation.output_object_key ?? undefined,

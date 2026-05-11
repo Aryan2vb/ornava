@@ -5,6 +5,7 @@ import {
   getCreatedImageForUser,
   markImageUploaded,
 } from "@/lib/db";
+import { logAnalyticsEventSafe } from "@/lib/events";
 import { getRequiredUserId } from "@/lib/session";
 import { uploadOriginalObject } from "@/lib/storage";
 
@@ -74,6 +75,15 @@ export async function POST(request: Request, { params }: RouteParams) {
     if (!uploadedImage) {
       return NextResponse.json({ error: "image_not_found" }, { status: 404 });
     }
+    await logAnalyticsEventSafe({
+      userId,
+      name: "upload_completed",
+      properties: {
+        imageId: uploadedImage.id,
+        objectKey: uploadedImage.original_object_key,
+        uploadPath: "proxy",
+      },
+    });
 
     const response: UploadCompleteResponse = {
       imageId: uploadedImage.id,

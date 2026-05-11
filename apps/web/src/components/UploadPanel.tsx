@@ -302,12 +302,12 @@ export function UploadPanel() {
         type="button"
         onClick={() => {
           if (state.status === "uploaded") {
-            router.push(`/generating?imageId=${state.imageId}`);
+            router.push(`/brief?imageId=${state.imageId}`);
           }
         }}
       >
         <Icon name="arrow-right" size={17} />
-        Continue to style
+        Continue
       </button>
     </>
   );

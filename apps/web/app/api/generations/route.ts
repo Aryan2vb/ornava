@@ -3,12 +3,15 @@ import { NextResponse } from "next/server";
 import { ZodError } from "zod";
 import {
   createGeneration,
+  deductCredit,
+  getUserCredits,
   getUploadedImageForUser,
 } from "@/lib/db";
 import {
   resolveModelRouteForMode,
   validateCreateGenerationRequest,
 } from "@/lib/generation";
+import { logAnalyticsEventSafe } from "@/lib/events";
 import { enqueueGenerationJob } from "@/lib/queue";
 import { getRequiredUserId } from "@/lib/session";
 
@@ -20,6 +23,12 @@ export async function POST(request: Request) {
   }
 
   try {
+    const credits = await getUserCredits(userId);
+
+    if (credits <= 0) {
+      return NextResponse.json({ error: "no_credits", message: "No credits remaining" }, { status: 403 });
+    }
+
     const generationRequest = validateCreateGenerationRequest(await request.json());
     const image = await getUploadedImageForUser({
       userId,
@@ -36,6 +45,7 @@ export async function POST(request: Request) {
       imageId: image.id,
       mode: generationRequest.mode,
       modelRoute,
+      generationBrief: generationRequest.generationBrief,
       clientRequestId: generationRequest.clientRequestId,
     });
 
@@ -45,6 +55,36 @@ export async function POST(request: Request) {
       imageId: image.id,
       mode: generation.mode,
       modelRoute: generation.model_route,
+    });
+    await deductCredit(userId);
+    await logAnalyticsEventSafe({
+      userId,
+      name: "generation_requested",
+      properties: {
+        generationId: generation.id,
+        imageId: image.id,
+        mode: generation.mode,
+        modelRoute: generation.model_route,
+        jewelryType: generation.generation_brief.jewelryType,
+        posePresetId: generation.generation_brief.posePresetId,
+        backgroundPresetId: generation.generation_brief.backgroundPresetId,
+        aspectRatio: generation.generation_brief.aspectRatio,
+        promptTemplateVersion: generation.generation_brief.promptTemplateVersion,
+      },
+    });
+    await logAnalyticsEventSafe({
+      userId,
+      name: "brief_completed",
+      properties: {
+        generationId: generation.id,
+        imageId: image.id,
+        mode: generation.mode,
+        jewelryType: generation.generation_brief.jewelryType,
+        posePresetId: generation.generation_brief.posePresetId,
+        backgroundPresetId: generation.generation_brief.backgroundPresetId,
+        aspectRatio: generation.generation_brief.aspectRatio,
+        promptTemplateVersion: generation.generation_brief.promptTemplateVersion,
+      },
     });
 
     const response: CreateGenerationResponse = {

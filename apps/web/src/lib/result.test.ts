@@ -12,6 +12,15 @@ const completedRow: GenerationResultRow = {
   mode: "on_model",
   status: "completed",
   model_route: "ornava-default-v1",
+  generation_brief: {
+    jewelryType: "ring",
+    generationMode: "on_model",
+    modelPresetId: "model_hand",
+    posePresetId: "ring_on_finger",
+    backgroundPresetId: "warm_ivory",
+    aspectRatio: "4:5",
+    promptTemplateVersion: "guided-v2",
+  },
   provider: "fal",
   provider_model_id: "openai/gpt-image-2/edit",
   provider_job_id: "019e1259-be1e-7e61-8cf8-71c9029fdf80",
@@ -42,4 +51,5 @@ test("toGenerationResultResponse maps a completed generation to signed assets", 
   assert.equal(response.assets.generated.url, "https://r2.example.com/generated");
   assert.equal(response.assets.generated.objectKey, completedRow.output_object_key);
   assert.equal(response.providerJobId, completedRow.provider_job_id);
+  assert.equal(response.generationBrief.posePresetId, "ring_on_finger");
 });
