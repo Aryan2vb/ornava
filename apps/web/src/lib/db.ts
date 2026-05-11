@@ -166,6 +166,26 @@ export async function markImageUploaded(input: {
   return result.rows[0] ?? null;
 }
 
+export async function getCreatedImageForUser(input: {
+  userId: string;
+  imageId: string;
+  objectKey: string;
+}) {
+  const result = await getPool().query<ImageRow>(
+    `
+      select id, user_id, original_object_key, status
+      from images
+      where id = $1
+        and user_id = $2
+        and original_object_key = $3
+        and status = 'created'
+    `,
+    [input.imageId, input.userId, input.objectKey],
+  );
+
+  return result.rows[0] ?? null;
+}
+
 export async function getUploadedImageForUser(input: {
   userId: string;
   imageId: string;

@@ -3,7 +3,7 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import GoogleProvider from "next-auth/providers/google";
 import { env, getRequiredAuthSecret } from "./env";
 import { upsertUserFromOAuthProfile } from "./db";
-import { normalizeEmail } from "./identity";
+import { normalizeDevAuthCode, normalizeEmail } from "./identity";
 
 const googleConfigured = Boolean(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET);
 const devCredentialsConfigured = Boolean(
@@ -43,11 +43,12 @@ export const authOptions: NextAuthOptions = {
               }
 
               const email = normalizeEmail(credentials.email);
+              const code = normalizeDevAuthCode(credentials.code);
 
               if (
                 email &&
                 email === normalizeEmail(env.DEV_AUTH_EMAIL) &&
-                credentials?.code === env.DEV_AUTH_CODE
+                code === normalizeDevAuthCode(env.DEV_AUTH_CODE)
               ) {
                 const dbUser = await upsertUserFromOAuthProfile({
                   email,

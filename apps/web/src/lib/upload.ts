@@ -45,3 +45,11 @@ export function buildOriginalObjectKey(input: {
 
   return `users/${input.userId}/originals/${input.imageId}/${slug}.${extension}`;
 }
+
+export function buildUploadProxyPath(imageId: string) {
+  return `/api/uploads/${encodeURIComponent(imageId)}/proxy`;
+}
+
+export function isBrowserUploadNetworkError(error: unknown) {
+  return error instanceof TypeError;
+}

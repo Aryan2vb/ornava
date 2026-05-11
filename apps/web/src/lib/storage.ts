@@ -45,6 +45,21 @@ export async function createOriginalUploadUrl(input: {
   };
 }
 
+export async function uploadOriginalObject(input: {
+  objectKey: string;
+  fileType: "image/jpeg" | "image/png";
+  body: Uint8Array;
+}) {
+  const command = new PutObjectCommand({
+    Bucket: env.R2_ORIGINALS_BUCKET,
+    Key: input.objectKey,
+    Body: input.body,
+    ContentType: input.fileType,
+  });
+
+  await getR2Client().send(command);
+}
+
 export async function createObjectReadUrl(input: {
   bucket: string;
   objectKey: string;

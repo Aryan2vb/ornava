@@ -9,7 +9,9 @@ import type {
 } from "@ornava/shared";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import type { CSSProperties } from "react";
 import { useEffect, useState, useTransition } from "react";
+import { Icon } from "./Icon";
 import {
   feedbackReasonLabels,
 } from "@/lib/feedback";
@@ -49,9 +51,9 @@ async function postJson<TResponse>(url: string, body: unknown) {
 }
 
 const modeLabels: Record<GenerationResultResponse["mode"], string> = {
-  on_model: "On-Model",
+  on_model: "On-model",
   studio: "Studio",
-  close_up: "Close-Up",
+  close_up: "Close-up",
 };
 
 const feedbackReasonOptions = Object.entries(feedbackReasonLabels) as Array<
@@ -112,7 +114,23 @@ export function ResultView() {
   }, [generationId]);
 
   if (state.status === "loading") {
-    return <p className="copy">Loading result...</p>;
+    return (
+      <div className="soft-panel" style={{ alignItems: "center", textAlign: "center" }}>
+        <div
+          className="progress-ring is-active"
+          style={{ "--progress": 18 } as CSSProperties}
+        >
+          <div className="progress-ring-label">
+            <strong>
+              <span className="spinner large" aria-hidden="true" />
+            </strong>
+            <span>Loading</span>
+          </div>
+        </div>
+        <strong>Opening result...</strong>
+        <p className="copy">Fetching signed image links for review.</p>
+      </div>
+    );
   }
 
   if (state.status === "failed") {
@@ -123,6 +141,7 @@ export function ResultView() {
           <p className="status-text error">{state.message}</p>
         </div>
         <Link className="button secondary" href="/upload">
+          <Icon name="arrow-left" size={16} />
           Upload another image
         </Link>
       </>
@@ -198,46 +217,98 @@ export function ResultView() {
 
   return (
     <>
-      <div className="result-meta">
-        <span>{modeLabels[result.mode]}</span>
-        {result.generationDurationMs ? (
-          <span>{Math.round(result.generationDurationMs / 1000)}s</span>
-        ) : null}
+      <div className="screen-header-row">
+        <div className="screen-header">
+          <h1 className="title">Review result</h1>
+          <p className="copy">Check product fidelity before sending.</p>
+        </div>
+        <span className="status-pill">
+          <Icon name="check" size={14} />
+          Ready
+        </span>
       </div>
 
-      <div className="image-stack">
-        <figure className="image-card">
-          <figcaption>Original</figcaption>
-          <img alt="Original jewelry upload" src={result.assets.original.url} />
-        </figure>
-        <figure className="image-card">
-          <figcaption>Generated</figcaption>
-          <img alt="Generated jewelry catalog output" src={result.assets.generated.url} />
-        </figure>
-      </div>
+      <figure className="image-card">
+        <img alt="Generated jewelry catalog output" src={result.assets.generated.url} />
+        <figcaption className="result-meta">
+          <span className="brand-row">
+            <Icon name="calendar" size={14} />
+            {modeLabels[result.mode]} · 4:5
+          </span>
+          {result.generationDurationMs ? (
+            <span>{Math.round(result.generationDurationMs / 1000)} sec</span>
+          ) : null}
+        </figcaption>
+      </figure>
 
-      <div className="panel compact-panel">
+      <div className="button-row">
         <a
-          className="button"
+          className="button secondary"
           download
           href={result.assets.generated.url}
           target="_blank"
           rel="noreferrer"
         >
-          Download
+          <Icon name="download" size={17} />
+          Save
         </a>
         <button
-          className="button secondary"
+          className="button whatsapp"
           disabled={isSharing}
           type="button"
           onClick={shareResult}
         >
-          Share to WhatsApp
+          {isSharing ? (
+            <span className="spinner" aria-hidden="true" />
+          ) : (
+            <Icon name="phone" size={18} />
+          )}
+          {isSharing ? "Opening share..." : "Send on WhatsApp"}
         </button>
       </div>
 
-      <div className="panel compact-panel">
-        <strong>Is this usable?</strong>
+      <div className="panel">
+        <div className="screen-header-row">
+          <strong style={{ fontSize: 16, lineHeight: "22px" }}>
+            Fidelity check
+          </strong>
+          <span className="copy" style={{ fontSize: 12 }}>
+            Before sharing
+          </span>
+        </div>
+        <div className="button-row">
+          {[
+            ["spark", "Stones"],
+            ["diamond", "Metal"],
+            ["search", "Shape"],
+          ].map(([icon, label]) => (
+            <span className="credit-pill" style={{ flex: 1, justifyContent: "center" }} key={label}>
+              <Icon name={icon as "spark"} size={13} />
+              {label}
+            </span>
+          ))}
+        </div>
+      </div>
+
+      <figure className="image-card">
+        <img alt="Original jewelry upload" src={result.assets.original.url} />
+        <figcaption className="result-meta">
+          <span className="brand-row">
+            <Icon name="image" size={14} />
+            Source photo
+          </span>
+        </figcaption>
+      </figure>
+
+      <div className="soft-panel">
+        <div className="screen-header-row">
+          <strong style={{ fontSize: 16, lineHeight: "21px" }}>
+            Good enough to send?
+          </strong>
+          <span className="copy" style={{ fontSize: 12 }}>
+            Beta feedback
+          </span>
+        </div>
         <div className="button-row">
           <button
             className="button"
@@ -245,27 +316,32 @@ export function ResultView() {
             type="button"
             onClick={() => submitFeedback({ rating: "usable" })}
           >
-            Usable
+            {isSubmittingFeedback ? (
+              <span className="spinner" aria-hidden="true" />
+            ) : (
+              <Icon name="check" size={16} />
+            )}
+            {isSubmittingFeedback ? "Saving..." : "Usable"}
           </button>
           <button
             className="button secondary"
-            disabled={isSubmittingFeedback}
+            disabled={isRetrying}
             type="button"
-            onClick={() =>
-              submitFeedback({
-                rating: "not_usable",
-                reason: selectedReason,
-              })
-            }
+            onClick={retryGeneration}
           >
-            Not usable
+            {isRetrying ? (
+              <span className="spinner" aria-hidden="true" />
+            ) : (
+              <Icon name="refresh" size={16} />
+            )}
+            {isRetrying ? "Retrying..." : "Retry"}
           </button>
         </div>
         <label className="field-label" htmlFor="feedback-reason">
           Reason if not usable
         </label>
         <select
-          className="input"
+          className="select"
           id="feedback-reason"
           value={selectedReason}
           onChange={(event) =>
@@ -278,20 +354,25 @@ export function ResultView() {
             </option>
           ))}
         </select>
+        <button
+          className="button secondary"
+          disabled={isSubmittingFeedback}
+          type="button"
+          onClick={() =>
+            submitFeedback({
+              rating: "not_usable",
+              reason: selectedReason,
+            })
+          }
+        >
+          Save not-usable feedback
+        </button>
         {feedbackMessage ? (
           <p className="status-text">{feedbackMessage}</p>
         ) : null}
         {feedbackError ? (
           <p className="status-text error">{feedbackError}</p>
         ) : null}
-        <button
-          className="button secondary"
-          disabled={isRetrying}
-          type="button"
-          onClick={retryGeneration}
-        >
-          Try again
-        </button>
       </div>
     </>
   );

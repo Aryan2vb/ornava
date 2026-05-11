@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  buildUploadProxyPath,
   buildOriginalObjectKey,
+  isBrowserUploadNetworkError,
   validateUploadInitRequest,
 } from "./upload";
 
@@ -40,4 +42,17 @@ test("buildOriginalObjectKey scopes uploads by user and image id", () => {
     }),
     "users/user-1/originals/image-1/kundan-ring.jpg",
   );
+});
+
+test("buildUploadProxyPath targets the image-scoped server upload route", () => {
+  assert.equal(
+    buildUploadProxyPath("486cef5b-89c3-4240-a156-cf2540571631"),
+    "/api/uploads/486cef5b-89c3-4240-a156-cf2540571631/proxy",
+  );
+});
+
+test("isBrowserUploadNetworkError detects failed direct browser uploads", () => {
+  assert.equal(isBrowserUploadNetworkError(new TypeError("Failed to fetch")), true);
+  assert.equal(isBrowserUploadNetworkError(new TypeError("Load failed")), true);
+  assert.equal(isBrowserUploadNetworkError(new Error("R2 upload failed.")), false);
 });
