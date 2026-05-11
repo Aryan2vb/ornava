@@ -1,4 +1,4 @@
-FROM node:20-alpine AS base
+FROM node:22-alpine AS base
 RUN corepack enable && corepack prepare pnpm@9 --activate
 
 WORKDIR /app
@@ -20,7 +20,7 @@ COPY apps/web/ apps/web/
 RUN pnpm --filter @ornava/web exec next build
 
 # Production image
-FROM node:20-alpine AS runner
+FROM node:22-alpine AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
