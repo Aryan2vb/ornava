@@ -151,7 +151,10 @@ export function ResultView() {
 
   const result = state.result;
   const shareText = `Ornava ${modeLabels[result.mode]} catalog image`;
-  const whatsAppUrl = `https://wa.me/?text=${encodeURIComponent(`${shareText}: ${result.assets.generated.url}`)}`;
+  // Use our same-origin download endpoint so browser fetch() works (no R2 CORS
+  // issues) and we can attach the file to Web Share API directly.
+  const downloadUrl = `/api/generations/${result.generationId}/download`;
+  const whatsAppUrl = `https://wa.me/?text=${encodeURIComponent(shareText)}`;
 
   async function fetchImageAsFile(url: string, fileName: string): Promise<File | null> {
     try {
@@ -170,7 +173,7 @@ export function ResultView() {
 
       // Try to share the image file directly (works on mobile with Web Share API Level 2)
       if (navigator.share && navigator.canShare) {
-        const file = await fetchImageAsFile(result.assets.generated.url, fileName);
+        const file = await fetchImageAsFile(downloadUrl, fileName);
 
         if (file && navigator.canShare({ files: [file] })) {
           try {
@@ -186,12 +189,11 @@ export function ResultView() {
           }
         }
 
-        // File share not supported but basic share is — at least share text + url
+        // File share not supported but basic share is — share just the text
         try {
           await navigator.share({
             title: "Ornava generated image",
             text: shareText,
-            url: result.assets.generated.url,
           });
           return;
         } catch (error) {
@@ -199,7 +201,7 @@ export function ResultView() {
         }
       }
 
-      // Last resort for desktop / unsupported browsers: open WhatsApp with URL
+      // Last resort for desktop / unsupported browsers: open WhatsApp with text only
       window.open(whatsAppUrl, "_blank", "noopener,noreferrer");
     });
   }
@@ -321,9 +323,7 @@ export function ResultView() {
         <a
           className="button secondary"
           download
-          href={result.assets.generated.url}
-          target="_blank"
-          rel="noreferrer"
+          href={downloadUrl}
         >
           <Icon name="download" size={17} />
           Save
