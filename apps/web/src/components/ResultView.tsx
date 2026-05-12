@@ -151,18 +151,27 @@ export function ResultView() {
 
   const result = state.result;
   const shareText = `Ornava ${modeLabels[result.mode]} catalog image`;
-  // Use our same-origin download endpoint so browser fetch() works (no R2 CORS
-  // issues) and we can attach the file to Web Share API directly.
+  // Same-origin proxy for file fetching (avoids R2 CORS for browser fetch).
   const downloadUrl = `/api/generations/${result.generationId}/download`;
-  const whatsAppUrl = `https://wa.me/?text=${encodeURIComponent(shareText)}`;
+  // Direct R2 URL is short-lived but works for WhatsApp preview / desktop fallback.
+  const sharedImageUrl = result.assets.generated.url;
+  const whatsAppUrl = `https://wa.me/?text=${encodeURIComponent(`${shareText}\n${sharedImageUrl}`)}`;
 
   async function fetchImageAsFile(url: string, fileName: string): Promise<File | null> {
     try {
-      const response = await fetch(url);
-      if (!response.ok) return null;
+      const response = await fetch(url, { credentials: "same-origin" });
+      if (!response.ok) {
+        console.warn(`[share] download fetch failed: HTTP ${response.status}`);
+        return null;
+      }
       const blob = await response.blob();
+      if (blob.size === 0) {
+        console.warn("[share] download returned empty blob");
+        return null;
+      }
       return new File([blob], fileName, { type: blob.type || "image/jpeg" });
-    } catch {
+    } catch (error) {
+      console.warn("[share] download fetch errored:", error);
       return null;
     }
   }
@@ -171,8 +180,8 @@ export function ResultView() {
     startSharing(async () => {
       const fileName = `ornava-${result.mode}-${result.generationId.slice(0, 8)}.jpg`;
 
-      // Try to share the image file directly (works on mobile with Web Share API Level 2)
-      if (navigator.share && navigator.canShare) {
+      // Tier 1: Web Share API Level 2 with file attachment (best UX on mobile)
+      if (typeof navigator !== "undefined" && navigator.share && navigator.canShare) {
         const file = await fetchImageAsFile(downloadUrl, fileName);
 
         if (file && navigator.canShare({ files: [file] })) {
@@ -184,24 +193,30 @@ export function ResultView() {
             });
             return;
           } catch (error) {
-            // User cancelled or share failed — don't fall through to WhatsApp link
-            if ((error as Error).name === "AbortError") return;
+            const name = (error as Error).name;
+            if (name === "AbortError") return;
+            console.warn("[share] file share failed, falling back:", error);
           }
+        } else {
+          console.info("[share] file attachment not supported — falling back to URL share");
         }
 
-        // File share not supported but basic share is — share just the text
+        // Tier 2: Web Share API basic — text + URL (WhatsApp shows preview from URL)
         try {
           await navigator.share({
             title: "Ornava generated image",
             text: shareText,
+            url: sharedImageUrl,
           });
           return;
         } catch (error) {
-          if ((error as Error).name === "AbortError") return;
+          const name = (error as Error).name;
+          if (name === "AbortError") return;
+          console.warn("[share] basic share failed, falling back:", error);
         }
       }
 
-      // Last resort for desktop / unsupported browsers: open WhatsApp with text only
+      // Tier 3: WhatsApp Web — text + URL combined into wa.me link
       window.open(whatsAppUrl, "_blank", "noopener,noreferrer");
     });
   }
