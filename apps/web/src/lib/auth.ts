@@ -13,7 +13,12 @@ import { normalizeDevAuthCode, normalizeEmail } from "./identity";
 
 const googleConfigured = Boolean(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET);
 const devCredentialsConfigured = Boolean(
-  process.env.NODE_ENV !== "production" &&
+  // Dev credentials enabled when:
+  //  (a) not production, OR
+  //  (b) explicitly allowed in production via ALLOW_DEV_AUTH_IN_PROD=true
+  //      (temporary admin bootstrap before Google OAuth is set up)
+  (process.env.NODE_ENV !== "production" ||
+    process.env.ALLOW_DEV_AUTH_IN_PROD === "true") &&
     env.DEV_AUTH_EMAIL &&
     env.DEV_AUTH_CODE,
 );

@@ -150,21 +150,57 @@ export function ResultView() {
   }
 
   const result = state.result;
-  const shareText = `Ornava ${modeLabels[result.mode]} result: ${result.assets.generated.url}`;
-  const whatsAppUrl = `https://wa.me/?text=${encodeURIComponent(shareText)}`;
+  const shareText = `Ornava ${modeLabels[result.mode]} catalog image`;
+  const whatsAppUrl = `https://wa.me/?text=${encodeURIComponent(`${shareText}: ${result.assets.generated.url}`)}`;
+
+  async function fetchImageAsFile(url: string, fileName: string): Promise<File | null> {
+    try {
+      const response = await fetch(url);
+      if (!response.ok) return null;
+      const blob = await response.blob();
+      return new File([blob], fileName, { type: blob.type || "image/jpeg" });
+    } catch {
+      return null;
+    }
+  }
 
   function shareResult() {
-    startSharing(() => {
-      if (!navigator.share) {
-        window.open(whatsAppUrl, "_blank", "noopener,noreferrer");
-        return;
+    startSharing(async () => {
+      const fileName = `ornava-${result.mode}-${result.generationId.slice(0, 8)}.jpg`;
+
+      // Try to share the image file directly (works on mobile with Web Share API Level 2)
+      if (navigator.share && navigator.canShare) {
+        const file = await fetchImageAsFile(result.assets.generated.url, fileName);
+
+        if (file && navigator.canShare({ files: [file] })) {
+          try {
+            await navigator.share({
+              files: [file],
+              title: "Ornava generated image",
+              text: shareText,
+            });
+            return;
+          } catch (error) {
+            // User cancelled or share failed — don't fall through to WhatsApp link
+            if ((error as Error).name === "AbortError") return;
+          }
+        }
+
+        // File share not supported but basic share is — at least share text + url
+        try {
+          await navigator.share({
+            title: "Ornava generated image",
+            text: shareText,
+            url: result.assets.generated.url,
+          });
+          return;
+        } catch (error) {
+          if ((error as Error).name === "AbortError") return;
+        }
       }
 
-      void navigator.share({
-        title: "Ornava generated image",
-        text: shareText,
-        url: result.assets.generated.url,
-      });
+      // Last resort for desktop / unsupported browsers: open WhatsApp with URL
+      window.open(whatsAppUrl, "_blank", "noopener,noreferrer");
     });
   }
 
