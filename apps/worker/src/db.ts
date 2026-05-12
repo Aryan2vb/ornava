@@ -16,6 +16,12 @@ export function getPool() {
 
   pool ??= new Pool({
     connectionString: env.DATABASE_URL,
+    // 15 connections per worker — covers 10 concurrent jobs + headroom for
+    // event logging + status updates. With 2 worker replicas = 30 total
+    // connections to Postgres, well under Supabase Pro's 500 limit.
+    max: 15,
+    idleTimeoutMillis: 30_000,
+    connectionTimeoutMillis: 5_000,
   });
 
   return pool;
@@ -137,6 +143,40 @@ export async function markGenerationFailed(input: {
       where id = $1
     `,
     [input.generationId, input.failureCode, input.failureMessageSafe],
+  );
+}
+
+// Called after async submission to Fal. Stores the provider job ID so the
+// webhook handler can look up this generation when Fal calls back. Also
+// stores provider + model for admin visibility. Status stays 'processing'.
+export async function markGenerationSubmittedAsync(input: {
+  generationId: string;
+  provider: string;
+  providerModelId: string;
+  providerJobId: string;
+  adapterVersion: string;
+  rawProviderMetadata?: Record<string, JsonValue>;
+}) {
+  await getPool().query(
+    `
+      update generations
+      set
+        provider = $2,
+        provider_model_id = $3,
+        provider_job_id = $4,
+        adapter_version = $5,
+        raw_provider_metadata = $6::jsonb,
+        updated_at = now()
+      where id = $1
+    `,
+    [
+      input.generationId,
+      input.provider,
+      input.providerModelId,
+      input.providerJobId,
+      input.adapterVersion,
+      JSON.stringify(input.rawProviderMetadata ?? {}),
+    ],
   );
 }
 

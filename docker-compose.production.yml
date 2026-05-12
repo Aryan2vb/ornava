@@ -9,14 +9,27 @@ services:
     ports:
       - "3002:3000"
     depends_on:
-      worker:
+      worker-1:
+        condition: service_started
+      worker-2:
         condition: service_started
 
-  worker:
+  # Two worker replicas. Each runs concurrency=10 → total 20 parallel slots.
+  # Using explicit services (not deploy.replicas) for consistency across
+  # docker compose v2 and older tooling.
+  worker-1:
     build:
       context: .
       dockerfile: apps/worker/Dockerfile
-    container_name: ornava-worker
+    container_name: ornava-worker-1
+    restart: unless-stopped
+    env_file: .env.production
+
+  worker-2:
+    build:
+      context: .
+      dockerfile: apps/worker/Dockerfile
+    container_name: ornava-worker-2
     restart: unless-stopped
     env_file: .env.production
 

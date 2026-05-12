@@ -67,6 +67,7 @@ export function ResultView() {
   const [state, setState] = useState<ResultState>({ status: "loading" });
   const [selectedReason, setSelectedReason] =
     useState<FeedbackReason>("stone_or_detail_changed");
+  const [sliderPos, setSliderPos] = useState(50);
   const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null);
   const [feedbackError, setFeedbackError] = useState<string | null>(null);
   const [isSharing, startSharing] = useTransition();
@@ -228,18 +229,57 @@ export function ResultView() {
         </span>
       </div>
 
-      <figure className="image-card">
-        <img alt="Generated jewelry catalog output" src={result.assets.generated.url} />
+      {/* Before/After Comparison Slider */}
+      <div className="compare-slider">
+        <div className="compare-slider-container">
+          <img
+            alt="Generated jewelry catalog output"
+            className="compare-img compare-img--generated"
+            src={result.assets.generated.url}
+          />
+          <div
+            className="compare-img-clip"
+            style={{ "--clip": `${sliderPos}%` } as CSSProperties}
+          >
+            <img
+              alt="Original jewelry upload"
+              className="compare-img"
+              src={result.assets.original.url}
+            />
+          </div>
+          <div
+            className="compare-handle"
+            style={{ left: `${sliderPos}%` }}
+          >
+            <div className="compare-handle-line" />
+            <div className="compare-handle-knob">
+              <Icon name="arrow-left" size={10} />
+              <Icon name="arrow-left" size={10} style={{ transform: "rotate(180deg)" }} />
+            </div>
+            <div className="compare-handle-line" />
+          </div>
+          <input
+            aria-label="Compare original and generated"
+            className="compare-range"
+            max="100"
+            min="0"
+            type="range"
+            value={sliderPos}
+            onChange={(e) => setSliderPos(Number(e.target.value))}
+          />
+          <span className="compare-label compare-label--left">Original</span>
+          <span className="compare-label compare-label--right">Generated</span>
+        </div>
         <figcaption className="result-meta">
           <span className="brand-row">
             <Icon name="calendar" size={14} />
-            {modeLabels[result.mode]} · 4:5
+            {modeLabels[result.mode]}
           </span>
           {result.generationDurationMs ? (
-            <span>{Math.round(result.generationDurationMs / 1000)} sec</span>
+            <span>{Math.round(result.generationDurationMs / 1000)}s</span>
           ) : null}
         </figcaption>
-      </figure>
+      </div>
 
       <div className="button-row">
         <a
@@ -266,39 +306,6 @@ export function ResultView() {
           {isSharing ? "Opening share..." : "Send on WhatsApp"}
         </button>
       </div>
-
-      <div className="panel">
-        <div className="screen-header-row">
-          <strong style={{ fontSize: 16, lineHeight: "22px" }}>
-            Fidelity check
-          </strong>
-          <span className="copy" style={{ fontSize: 12 }}>
-            Before sharing
-          </span>
-        </div>
-        <div className="button-row">
-          {[
-            ["spark", "Stones"],
-            ["diamond", "Metal"],
-            ["search", "Shape"],
-          ].map(([icon, label]) => (
-            <span className="credit-pill" style={{ flex: 1, justifyContent: "center" }} key={label}>
-              <Icon name={icon as "spark"} size={13} />
-              {label}
-            </span>
-          ))}
-        </div>
-      </div>
-
-      <figure className="image-card">
-        <img alt="Original jewelry upload" src={result.assets.original.url} />
-        <figcaption className="result-meta">
-          <span className="brand-row">
-            <Icon name="image" size={14} />
-            Source photo
-          </span>
-        </figcaption>
-      </figure>
 
       <div className="soft-panel">
         <div className="screen-header-row">

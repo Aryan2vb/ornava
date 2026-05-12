@@ -18,6 +18,7 @@ import {
   markGenerationCompleted,
   markGenerationFailed,
   markGenerationProcessing,
+  markGenerationSubmittedAsync,
 } from "./db";
 import {
   buildGeneratedObjectKey,
@@ -160,6 +161,86 @@ export function startGenerationWorker() {
           }),
         );
         const outputFormat = "jpeg";
+
+        // Async path: if WEBHOOK_BASE_URL is configured AND the adapter
+        // supports async submission, submit to Fal and release the worker slot
+        // immediately. Completion arrives via /api/webhooks/fal.
+        // Sync path (legacy): worker waits for Fal to finish (25s+ per job).
+        //
+        // Note: Fal signs webhooks with their own ED25519 keys (JWKS), not a
+        // shared secret from us. No FAL_WEBHOOK_SECRET required.
+        const useAsync = env.WEBHOOK_BASE_URL && adapter.submitAsync;
+
+        if (useAsync) {
+          const webhookUrl = `${env.WEBHOOK_BASE_URL}/api/webhooks/fal`;
+          const asyncResult = await measureStage(
+            timings,
+            "providerGenerationMs",
+            () =>
+              adapter.submitAsync!(
+                {
+                  generationId: workItem.id,
+                  userId: workItem.user_id,
+                  mode: workItem.mode,
+                  model: {
+                    route: workItem.model_route,
+                    providerModelId: registryEntry.modelId,
+                  },
+                  inputImage: {
+                    objectKey: workItem.original_object_key,
+                    signedUrl: inputImageUrl,
+                    mimeType: workItem.file_type,
+                  },
+                  prompt: buildGenerationPrompt(
+                    workItem.mode,
+                    workItem.generation_brief,
+                  ),
+                  output: {
+                    aspectRatio: workItem.generation_brief.aspectRatio,
+                    format: outputFormat,
+                    quality: "standard",
+                  },
+                  metadata: {
+                    promptTemplateVersion: workItem.prompt_template_version,
+                    clientRequestId: workItem.client_request_id,
+                    jewelryType: workItem.generation_brief.jewelryType,
+                    posePresetId: workItem.generation_brief.posePresetId,
+                    backgroundPresetId:
+                      workItem.generation_brief.backgroundPresetId,
+                    aspectRatio: workItem.generation_brief.aspectRatio,
+                    briefPromptTemplateVersion:
+                      workItem.generation_brief.promptTemplateVersion,
+                  },
+                },
+                { webhookUrl },
+              ),
+          );
+
+          timings.totalWorkerMs = Date.now() - startedAt;
+
+          // Store provider_job_id so webhook handler can find this generation.
+          // Status stays 'processing' until webhook arrives.
+          await markGenerationSubmittedAsync({
+            generationId: workItem.id,
+            provider: asyncResult.provider,
+            providerModelId: asyncResult.modelId,
+            providerJobId: asyncResult.providerJobId,
+            adapterVersion: FAL_IMAGE_EDIT_ADAPTER_VERSION,
+            rawProviderMetadata: {
+              ...(asyncResult.rawMetadata ?? {}),
+              timings,
+              generationBrief: { ...workItem.generation_brief },
+              submissionMode: "async_webhook",
+            },
+          });
+
+          console.info(
+            `[worker] submitted generation ${workItem.id} to fal (request_id=${asyncResult.providerJobId}), slot freed after ${Date.now() - startedAt}ms`,
+          );
+          return;
+        }
+
+        // Sync fallback (original code path)
         const result = await measureStage(timings, "providerGenerationMs", () =>
           adapter.submit({
             generationId: workItem.id,
@@ -288,7 +369,19 @@ export function startGenerationWorker() {
     },
     {
       connection: redisConnectionOptions(),
-      concurrency: 2,
+      // 10 concurrent jobs per worker. Jobs are I/O-bound (waiting on Fal.ai),
+      // so Node's event loop handles this easily at ~5MB RAM/job. With 2 worker
+      // replicas in docker-compose, total parallel capacity = 20 slots.
+      concurrency: 10,
+      // BullMQ renews a job's lock every `lockRenewTime`. If renewal fails for
+      // longer than `lockDuration`, another worker can pick it up as stalled.
+      // Default lockDuration is 30s — too short for Fal.ai jobs that take 25s+.
+      lockDuration: 90_000,
+      lockRenewTime: 30_000,
+      // Stalled job detection — runs every `stalledInterval`, retries at most
+      // `maxStalledCount` times before failing permanently.
+      stalledInterval: 30_000,
+      maxStalledCount: 1,
     },
   );
 

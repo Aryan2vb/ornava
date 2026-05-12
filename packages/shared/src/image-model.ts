@@ -54,8 +54,22 @@ export type NormalizedGenerationError = {
   rawMessage?: string;
 };
 
+export type ImageGenerationAsyncSubmitResult = {
+  provider: string;
+  modelId: string;
+  providerJobId: string;
+  submittedAt: string;
+  rawMetadata?: Record<string, JsonValue>;
+};
+
 export type ImageModelAdapter = {
   submit(request: ImageGenerationRequest): Promise<ImageGenerationResult>;
+  // Async submission — returns the provider's job ID immediately without
+  // waiting for generation to complete. Completion arrives via webhook.
+  submitAsync?(
+    request: ImageGenerationRequest,
+    options: { webhookUrl: string },
+  ): Promise<ImageGenerationAsyncSubmitResult>;
   normalizeError(error: unknown): NormalizedGenerationError;
 };
 

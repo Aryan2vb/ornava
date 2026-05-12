@@ -18,6 +18,8 @@ const envSchema = z.object({
   IMAGE_MODEL_ON_MODEL: z.string().optional(),
   IMAGE_MODEL_CLOSE_UP: z.string().optional(),
   FAL_KEY: z.string().min(1).optional(),
+  FAL_WEBHOOK_SECRET: z.string().min(1).optional(),
+  WEBHOOK_BASE_URL: z.string().url().optional(),
   SENTRY_DSN: z.string().optional(),
 });
 
@@ -34,5 +36,7 @@ export const env = envSchema.parse({
   IMAGE_MODEL_ON_MODEL: process.env.IMAGE_MODEL_ON_MODEL,
   IMAGE_MODEL_CLOSE_UP: process.env.IMAGE_MODEL_CLOSE_UP,
   FAL_KEY: process.env.FAL_KEY,
+  FAL_WEBHOOK_SECRET: process.env.FAL_WEBHOOK_SECRET,
+  WEBHOOK_BASE_URL: process.env.WEBHOOK_BASE_URL,
   SENTRY_DSN: process.env.SENTRY_DSN,
 });

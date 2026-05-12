@@ -96,6 +96,10 @@ const envSchema = z.object({
     emptyStringToUndefined,
     z.string().min(1).optional(),
   ),
+  FAL_WEBHOOK_SECRET: z.preprocess(
+    emptyStringToUndefined,
+    z.string().min(1).optional(),
+  ),
 });
 
 type RawWebEnv = {
@@ -122,6 +126,7 @@ type RawWebEnv = {
   IMAGE_MODEL_STUDIO?: string;
   IMAGE_MODEL_ON_MODEL?: string;
   IMAGE_MODEL_CLOSE_UP?: string;
+  FAL_WEBHOOK_SECRET?: string;
 };
 
 export function parseWebEnv(rawEnv: RawWebEnv) {
@@ -170,4 +175,5 @@ export const env = parseWebEnv({
   IMAGE_MODEL_STUDIO: process.env.IMAGE_MODEL_STUDIO,
   IMAGE_MODEL_ON_MODEL: process.env.IMAGE_MODEL_ON_MODEL,
   IMAGE_MODEL_CLOSE_UP: process.env.IMAGE_MODEL_CLOSE_UP,
+  FAL_WEBHOOK_SECRET: process.env.FAL_WEBHOOK_SECRET,
 });

@@ -665,3 +665,105 @@ export function toGenerationStatusResponse(
     generationDurationMs: generation.generation_duration_ms ?? undefined,
   };
 }
+
+// ===== Webhook Handler DB helpers =====
+// Called from /api/webhooks/fal when Fal.ai POSTs a completion notification.
+// We look up the generation by provider_job_id (unique per request) and
+// complete or fail it idempotently — duplicate webhooks are safe to handle.
+
+export type GenerationForWebhookRow = {
+  id: string;
+  user_id: string;
+  image_id: string;
+  mode: GenerationMode;
+  model_route: string;
+  status: GenerationStatus;
+  provider: string | null;
+  provider_model_id: string | null;
+  adapter_version: string | null;
+  started_at: string | null;
+  raw_provider_metadata: Record<string, JsonValue>;
+};
+
+export async function getGenerationByProviderJobId(providerJobId: string) {
+  const result = await getPool().query<GenerationForWebhookRow>(
+    `
+      select
+        id,
+        user_id,
+        image_id,
+        mode,
+        model_route,
+        status,
+        provider,
+        provider_model_id,
+        adapter_version,
+        started_at::text,
+        raw_provider_metadata
+      from generations
+      where provider_job_id = $1
+    `,
+    [providerJobId],
+  );
+
+  return result.rows[0] ?? null;
+}
+
+export async function markGenerationCompletedFromWebhook(input: {
+  generationId: string;
+  outputObjectKey: string;
+  generationDurationMs: number;
+  rawProviderMetadata?: Record<string, JsonValue>;
+}) {
+  // WHERE clause prevents double-completion. If another webhook/reaper already
+  // completed this job, our update becomes a no-op (0 rows affected).
+  const result = await getPool().query<{ id: string }>(
+    `
+      update generations
+      set
+        status = 'completed',
+        output_object_key = $2,
+        generation_duration_ms = $3,
+        raw_provider_metadata = $4::jsonb,
+        failure_code = null,
+        failure_message_safe = null,
+        completed_at = now(),
+        updated_at = now()
+      where id = $1
+        and status = 'processing'
+      returning id
+    `,
+    [
+      input.generationId,
+      input.outputObjectKey,
+      input.generationDurationMs,
+      JSON.stringify(input.rawProviderMetadata ?? {}),
+    ],
+  );
+
+  return result.rows[0] ?? null;
+}
+
+export async function markGenerationFailedFromWebhook(input: {
+  generationId: string;
+  failureCode: string;
+  failureMessageSafe: string;
+}) {
+  const result = await getPool().query<{ id: string }>(
+    `
+      update generations
+      set
+        status = 'failed',
+        failure_code = $2,
+        failure_message_safe = $3,
+        completed_at = now(),
+        updated_at = now()
+      where id = $1
+        and status = 'processing'
+      returning id
+    `,
+    [input.generationId, input.failureCode, input.failureMessageSafe],
+  );
+
+  return result.rows[0] ?? null;
+}

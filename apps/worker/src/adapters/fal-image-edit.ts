@@ -1,6 +1,7 @@
 import { fal } from "@fal-ai/client";
 import type {
   GenerationMode,
+  ImageGenerationAsyncSubmitResult,
   ImageGenerationRequest,
   ImageGenerationResult,
   ImageModelAdapter,
@@ -162,6 +163,49 @@ export const falImageEditAdapter: ImageModelAdapter = {
         falRequestId: result.requestId || null,
         falImageSize: falImageSizeForMode(request.mode),
         falQuality: falQualityForOutputQuality(request.output.quality),
+      },
+    };
+  },
+
+  async submitAsync(
+    request: ImageGenerationRequest,
+    options: { webhookUrl: string },
+  ): Promise<ImageGenerationAsyncSubmitResult> {
+    if (!env.FAL_KEY) {
+      throw new Error("FAL_KEY is required for the fal image edit adapter.");
+    }
+
+    fal.config({ credentials: env.FAL_KEY });
+
+    // fal.queue.submit() returns immediately with a request_id. Fal processes
+    // the job on their GPUs, then POSTs the result to our webhook URL.
+    const submitResult = await fal.queue.submit(request.model.providerModelId, {
+      input: buildFalEditInput({
+        mode: request.mode,
+        prompt: request.prompt,
+        inputImageUrl: request.inputImage.signedUrl,
+        outputFormat: request.output.format,
+        outputQuality: request.output.quality,
+      }),
+      webhookUrl: options.webhookUrl,
+    } as never);
+
+    if (!submitResult.request_id) {
+      throw new Error("fal.queue.submit did not return a request_id.");
+    }
+
+    return {
+      provider: "fal",
+      modelId: request.model.providerModelId,
+      providerJobId: submitResult.request_id,
+      submittedAt: new Date().toISOString(),
+      rawMetadata: {
+        adapterVersion: FAL_IMAGE_EDIT_ADAPTER_VERSION,
+        modelRoute: request.model.route,
+        falRequestId: submitResult.request_id,
+        falImageSize: falImageSizeForMode(request.mode),
+        falQuality: falQualityForOutputQuality(request.output.quality),
+        webhookUrl: options.webhookUrl,
       },
     };
   },

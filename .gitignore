@@ -10,3 +10,10 @@ coverage
 .env.*.local
 *.tsbuildinfo
 .env.production
+infra/ornava-ec2-key
+infra/ornava-ec2-key.pub
+infra/.terraform/
+infra/terraform.tfstate*
+infra/.terraform.lock.hcl
+server.log
+.playwright-cli/

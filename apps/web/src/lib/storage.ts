@@ -79,3 +79,20 @@ export async function createObjectReadUrl(input: {
     expiresAt: new Date(Date.now() + expiresInSeconds * 1000).toISOString(),
   };
 }
+
+// Write a generated image to R2. Called from the Fal webhook handler when
+// a generation completes on the provider side.
+export async function putGeneratedImageObject(input: {
+  objectKey: string;
+  bytes: Uint8Array;
+  contentType: string;
+}) {
+  const command = new PutObjectCommand({
+    Bucket: env.R2_GENERATED_BUCKET,
+    Key: input.objectKey,
+    Body: input.bytes,
+    ContentType: input.contentType,
+  });
+
+  await getR2Client().send(command);
+}
