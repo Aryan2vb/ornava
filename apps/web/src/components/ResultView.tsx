@@ -116,21 +116,22 @@ export function ResultView() {
 
   if (state.status === "loading") {
     return (
-      <div className="soft-panel" style={{ alignItems: "center", textAlign: "center" }}>
-        <div
-          className="progress-ring is-active"
-          style={{ "--progress": 18 } as CSSProperties}
-        >
-          <div className="progress-ring-label">
-            <strong>
-              <span className="spinner large" aria-hidden="true" />
-            </strong>
-            <span>Loading</span>
+      <>
+        <div className="screen-header">
+          <h1 className="title">Bas ek second...</h1>
+          <p className="copy">Aapka before & after ready ho raha hai.</p>
+        </div>
+        <div className="gen-result-loading">
+          <div className="gen-result-loading-preview">
+            <div className="gen-result-shimmer" />
+            <div className="gen-result-shimmer" />
+          </div>
+          <div className="gen-result-loading-footer">
+            <span className="spinner" aria-hidden="true" />
+            <span>Loading high-res images...</span>
           </div>
         </div>
-        <strong>Opening result...</strong>
-        <p className="copy">Fetching signed image links for review.</p>
-      </div>
+      </>
     );
   }
 
@@ -150,12 +151,10 @@ export function ResultView() {
   }
 
   const result = state.result;
-  const shareText = `Ornava ${modeLabels[result.mode]} catalog image`;
   // Same-origin proxy for file fetching (avoids R2 CORS for browser fetch).
   const downloadUrl = `/api/generations/${result.generationId}/download`;
   // Direct R2 URL is short-lived but works for WhatsApp preview / desktop fallback.
   const sharedImageUrl = result.assets.generated.url;
-  const whatsAppUrl = `https://wa.me/?text=${encodeURIComponent(`${shareText}\n${sharedImageUrl}`)}`;
 
   async function fetchImageAsFile(url: string, fileName: string): Promise<File | null> {
     try {
@@ -176,48 +175,62 @@ export function ResultView() {
     }
   }
 
-  function shareResult() {
+  function downloadResult() {
     startSharing(async () => {
       const fileName = `ornava-${result.mode}-${result.generationId.slice(0, 8)}.jpg`;
 
-      // Tier 1: Web Share API Level 2 with file attachment (best UX on mobile)
-      if (typeof navigator !== "undefined" && navigator.share && navigator.canShare) {
+      try {
+        const response = await fetch(downloadUrl, { credentials: "same-origin" });
+        if (!response.ok) throw new Error("Download failed");
+        const blob = await response.blob();
+
+        // Create blob URL and trigger download
+        const blobUrl = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = blobUrl;
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+      } catch (error) {
+        console.warn("[download] failed:", error);
+        window.open(downloadUrl, "_blank", "noopener,noreferrer");
+      }
+    });
+  }
+
+  function shareResult() {
+    startSharing(async () => {
+      const fileName = `ornava-${result.mode}-${result.generationId.slice(0, 8)}.jpg`;
+      const waUrl = `https://wa.me/?text=${encodeURIComponent(sharedImageUrl)}`;
+
+      // Always try file share first - it's the only way to actually attach the image
+      if (
+        typeof navigator !== "undefined" &&
+        typeof navigator.share === "function" &&
+        typeof navigator.canShare === "function"
+      ) {
         const file = await fetchImageAsFile(downloadUrl, fileName);
 
         if (file && navigator.canShare({ files: [file] })) {
           try {
-            await navigator.share({
-              files: [file],
-              title: "Ornava generated image",
-              text: shareText,
-            });
+            await navigator.share({ files: [file] });
             return;
           } catch (error) {
             const name = (error as Error).name;
-            if (name === "AbortError") return;
-            console.warn("[share] file share failed, falling back:", error);
+            if (name === "AbortError") return; // user cancelled, don't fallback
+            console.warn("[share] file share failed:", error);
           }
         } else {
-          console.info("[share] file attachment not supported — falling back to URL share");
+          console.info("[share] canShare returned false for files, has navigator.share:", !!navigator.share);
         }
-
-        // Tier 2: Web Share API basic — text + URL (WhatsApp shows preview from URL)
-        try {
-          await navigator.share({
-            title: "Ornava generated image",
-            text: shareText,
-            url: sharedImageUrl,
-          });
-          return;
-        } catch (error) {
-          const name = (error as Error).name;
-          if (name === "AbortError") return;
-          console.warn("[share] basic share failed, falling back:", error);
-        }
+      } else {
+        console.info("[share] Web Share API not available, falling back to wa.me URL");
       }
 
-      // Tier 3: WhatsApp Web — text + URL combined into wa.me link
-      window.open(whatsAppUrl, "_blank", "noopener,noreferrer");
+      // Fallback: open WhatsApp with URL (URL won't render as image preview but at least opens WA)
+      window.open(waUrl, "_blank", "noopener,noreferrer");
     });
   }
 
@@ -273,8 +286,7 @@ export function ResultView() {
     <>
       <div className="screen-header-row">
         <div className="screen-header">
-          <h1 className="title">Review result</h1>
-          <p className="copy">Check product fidelity before sending.</p>
+          <h1 className="title">Dekho aur share karo</h1>
         </div>
         <span className="status-pill">
           <Icon name="check" size={14} />
@@ -334,27 +346,43 @@ export function ResultView() {
         </figcaption>
       </div>
 
+      <button
+        className="button whatsapp"
+        disabled={isSharing}
+        type="button"
+        onClick={shareResult}
+        style={{ width: "100%", minHeight: 52, fontSize: 16 }}
+      >
+        {isSharing ? (
+          <span className="spinner" aria-hidden="true" />
+        ) : (
+          <Icon name="phone" size={20} />
+        )}
+        {isSharing ? "Opening..." : "WhatsApp pe bhejo"}
+      </button>
+
       <div className="button-row">
-        <a
+        <button
           className="button secondary"
-          download
-          href={downloadUrl}
+          disabled={isSharing}
+          type="button"
+          onClick={downloadResult}
         >
           <Icon name="download" size={17} />
           Save
-        </a>
+        </button>
         <button
-          className="button whatsapp"
-          disabled={isSharing}
+          className="button secondary"
+          disabled={isRetrying}
           type="button"
-          onClick={shareResult}
+          onClick={retryGeneration}
         >
-          {isSharing ? (
+          {isRetrying ? (
             <span className="spinner" aria-hidden="true" />
           ) : (
-            <Icon name="phone" size={18} />
+            <Icon name="refresh" size={16} />
           )}
-          {isSharing ? "Opening share..." : "Send on WhatsApp"}
+          Retry
         </button>
       </div>
 
@@ -383,16 +411,16 @@ export function ResultView() {
           </button>
           <button
             className="button secondary"
-            disabled={isRetrying}
+            disabled={isSubmittingFeedback}
             type="button"
-            onClick={retryGeneration}
+            onClick={() =>
+              submitFeedback({
+                rating: "not_usable",
+                reason: selectedReason,
+              })
+            }
           >
-            {isRetrying ? (
-              <span className="spinner" aria-hidden="true" />
-            ) : (
-              <Icon name="refresh" size={16} />
-            )}
-            {isRetrying ? "Retrying..." : "Retry"}
+            Not usable
           </button>
         </div>
         <label className="field-label" htmlFor="feedback-reason">

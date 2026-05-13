@@ -5,11 +5,11 @@ import type {
   GenerationStatusResponse,
 } from "@ornava/shared";
 import { useRouter, useSearchParams } from "next/navigation";
-import type { CSSProperties } from "react";
 import { useEffect, useState } from "react";
 import { Icon } from "./Icon";
 import { getGenerationProgressPercent } from "@/lib/beta-ui";
 import { buildResultPagePath } from "@/lib/result";
+import { buildUploadProxyPath } from "@/lib/upload";
 
 const modeLabels: Record<GenerationMode, string> = {
   on_model: "On model",
@@ -17,14 +17,32 @@ const modeLabels: Record<GenerationMode, string> = {
   close_up: "Close-up",
 };
 
+const karigarSteps = [
+  { label: "Roshni set ho rahi hai", desc: "Setting the lights" },
+  { label: "Heere chamka rahe hain", desc: "Polishing the stones" },
+  { label: "Gold ki safaai", desc: "Cleaning the gold" },
+  { label: "Final polish ho rahi hai", desc: "Final touches" },
+];
+
+const taglines = [
+  "Dikhega sona, toh bikega sona",
+  "50 sellers ke beech, aap sabse alag",
+  "Jo pehle dikhayega, wahi bechega",
+  "Pehli nazar mein trust banta hai",
+  "Photo solid, toh price pe no behas",
+  "Photographer ka intezaar ab khatam",
+  "Woh edit karenge, aap order lenge",
+  "Mehnat aapki, chamak hamari",
+  "Stock aaya nahi ki share kiya",
+  "Sab puchenge — ye photo kahan se li?",
+];
+
 async function getJson<TResponse>(url: string) {
   const response = await fetch(url);
-
   if (!response.ok) {
     const errorBody = await response.json().catch(() => null);
     throw new Error(errorBody?.error ?? "Request failed.");
   }
-
   return (await response.json()) as TResponse;
 }
 
@@ -36,20 +54,16 @@ export function GenerationPanel() {
     useState<GenerationStatusResponse | null>(null);
   const activeGenerationId = searchParams?.get("generationId") ?? null;
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [tipIndex, setTipIndex] = useState(0);
 
   useEffect(() => {
-    if (!activeGenerationId) {
-      return;
-    }
-
+    if (!activeGenerationId) return;
     let isCancelled = false;
-
     async function poll() {
       try {
         const response = await getJson<GenerationStatusResponse>(
           `/api/generations/${activeGenerationId}`,
         );
-
         if (!isCancelled) {
           setGenerationStatus(response);
           if (response.status === "completed") {
@@ -57,128 +71,113 @@ export function GenerationPanel() {
           }
         }
       } catch {
-        if (!isCancelled) {
-          setGenerationStatus(null);
-        }
+        if (!isCancelled) setGenerationStatus(null);
       }
     }
-
     void poll();
-    const interval = window.setInterval(() => {
-      void poll();
-    }, 2500);
-
-    return () => {
-      isCancelled = true;
-      window.clearInterval(interval);
-    };
+    const interval = window.setInterval(() => void poll(), 2500);
+    return () => { isCancelled = true; window.clearInterval(interval); };
   }, [activeGenerationId, router]);
 
   useEffect(() => {
-    if (!activeGenerationId) {
-      setElapsedSeconds(0);
-      return;
-    }
-
+    if (!activeGenerationId) { setElapsedSeconds(0); return; }
     setElapsedSeconds(0);
-    const interval = window.setInterval(() => {
-      setElapsedSeconds((current) => current + 1);
-    }, 1000);
+    const interval = window.setInterval(() => setElapsedSeconds((c) => c + 1), 1000);
+    return () => window.clearInterval(interval);
+  }, [activeGenerationId]);
 
+  useEffect(() => {
+    if (!activeGenerationId) return;
+    const interval = window.setInterval(() => setTipIndex((i) => (i + 1) % taglines.length), 6000);
     return () => window.clearInterval(interval);
   }, [activeGenerationId]);
 
   const visibleStatus = generationStatus?.status ?? (activeGenerationId ? "queued" : undefined);
-  const generationProgress = getGenerationProgressPercent(
-    visibleStatus,
-    elapsedSeconds,
-  );
-  const isGenerationActive =
-    visibleStatus === "queued" || visibleStatus === "processing";
+  const generationProgress = getGenerationProgressPercent(visibleStatus, elapsedSeconds);
+  const isGenerationActive = visibleStatus === "queued" || visibleStatus === "processing";
+
+  // Determine which karigar step is active based on progress
+  const activeKarigarStep =
+    generationProgress >= 90 ? 3 :
+    generationProgress >= 60 ? 2 :
+    generationProgress >= 30 ? 1 : 0;
+
+  const imageProxyUrl = imageId ? buildUploadProxyPath(imageId) : null;
 
   return (
     <>
       {generationStatus || activeGenerationId ? (
-        <>
-          <div className="screen-header">
-            <h1 className="title">Creating image</h1>
-            <p className="copy">
-              This can take 1-3 minutes while the model preserves product details.
-            </p>
-          </div>
-          <div className="soft-panel" style={{ alignItems: "center", gap: 20 }}>
-            <div
-              className={`progress-ring${isGenerationActive ? " is-active" : ""}`}
-              style={{ "--progress": generationProgress } as CSSProperties}
-            >
-              <div className="progress-ring-label">
-                <strong>{generationProgress}%</strong>
-                <span>{generationStatus ? modeLabels[generationStatus.mode] : "Working"}</span>
+        <div className="karigar-studio">
+          {/* Blurred background of user's jewelry */}
+          {imageProxyUrl ? (
+            <div className="karigar-bg">
+              <img src={imageProxyUrl} alt="" className="karigar-bg-img" />
+              <div className="karigar-bg-shimmer" />
+            </div>
+          ) : null}
+
+          <div className="karigar-content">
+            {/* Header */}
+            <div className="karigar-header">
+              <span className="karigar-eyebrow">
+                {generationStatus ? modeLabels[generationStatus.mode] : "Ornava Studio"}
+              </span>
+              <h1 className="karigar-title">Chamak aa rahi hai...</h1>
+            </div>
+
+            {/* Golden thread progress */}
+            <div className="karigar-progress">
+              <div className="karigar-thread">
+                <div
+                  className="karigar-thread-fill"
+                  style={{ width: `${generationProgress}%` }}
+                >
+                  <span className="karigar-sparkle" />
+                </div>
               </div>
+              <span className="karigar-percent">{generationProgress}%</span>
             </div>
-            <div style={{ textAlign: "center" }}>
-              <strong style={{ fontSize: 19, lineHeight: "24px" }}>
-                <Icon name="diamond" size={18} /> Preserving product identity
-              </strong>
-              <p className="copy">
-                Stones, metal color, shape, and scale stay the priority.
-              </p>
+
+            {/* Karigar steps - breathing animation */}
+            <div className="karigar-steps">
+              {karigarSteps.map((step, i) => (
+                <div
+                  key={step.label}
+                  className={`karigar-step${
+                    i < activeKarigarStep ? " done" : i === activeKarigarStep ? " active" : ""
+                  }`}
+                >
+                  <span className="karigar-step-indicator">
+                    {i < activeKarigarStep ? (
+                      <Icon name="check" size={12} />
+                    ) : i === activeKarigarStep ? (
+                      <span className="karigar-step-pulse" />
+                    ) : (
+                      <span className="karigar-step-dot" />
+                    )}
+                  </span>
+                  <span className="karigar-step-label">{step.label}</span>
+                </div>
+              ))}
             </div>
-          </div>
-          <div className="row-card">
-            <span className="icon-tile" style={{ width: 50, height: 50 }}>
-              <Icon name="image" size={23} />
-            </span>
-            <div className="row-card-body">
-              <span className="row-title">Using optimized source photo</span>
-              <span className="row-subtitle">Ready for result review when complete</span>
+
+            {/* Tagline - slides in from right */}
+            <div className="karigar-tagline-wrap">
+              <p key={tipIndex} className="karigar-tagline">{taglines[tipIndex]}</p>
             </div>
-          </div>
-          <div className="panel">
-            <div className="screen-header-row">
-              <span className="brand-row">
-                <Icon name="check" size={18} style={{ color: "var(--success)" }} />
-                <strong>Image optimized</strong>
-              </span>
-              <span className="status-text" style={{ color: "var(--success)" }}>
-                Done
-              </span>
-            </div>
-            <div className="screen-header-row">
-              <span className="brand-row">
-                <Icon name="spark" size={18} style={{ color: "var(--gold)" }} />
-                <strong>Generating catalog image</strong>
-              </span>
-              <span className="status-text">
-                {isGenerationActive ? (
-                  <span className="pulse-dot" aria-hidden="true" />
-                ) : null}
-                {visibleStatus === "completed" ? "Done" : "Now"}
-              </span>
-            </div>
-            <div className="screen-header-row">
-              <span className="brand-row" style={{ color: "var(--muted)" }}>
-                <Icon name="calendar" size={18} />
-                <strong>Preparing result</strong>
-              </span>
-              <span className="copy">
-                {visibleStatus === "completed" ? "Ready" : "Next"}
-              </span>
-            </div>
+
+            {/* Error state */}
             {generationStatus?.failureMessage ? (
-              <p className="status-text error">{generationStatus.failureMessage}</p>
+              <div className="gen-info-card" style={{ borderColor: "var(--danger)" }}>
+                <Icon name="x" size={18} style={{ color: "var(--danger)", flexShrink: 0 }} />
+                <div>
+                  <strong>Generation failed</strong>
+                  <p className="copy">{generationStatus.failureMessage}</p>
+                </div>
+              </div>
             ) : null}
           </div>
-          <div className="soft-panel">
-            <div className="brand-row">
-              <Icon name="info" size={18} />
-              <strong>Keep this open</strong>
-            </div>
-            <p className="copy">
-              If it fails, you can retry from the same uploaded photo.
-            </p>
-          </div>
-        </>
+        </div>
       ) : (
         <>
           <div className="screen-header">
@@ -196,21 +195,12 @@ export function GenerationPanel() {
               </span>
             </div>
           </div>
-          <div className="soft-panel">
-            <div className="brand-row">
-              <Icon name="spark" size={18} />
-              <strong>Guided catalog setup</strong>
-            </div>
-            <p className="copy">No prompt needed. Select the preset details next.</p>
-          </div>
           <button
             className="button"
             disabled={!imageId}
             type="button"
             onClick={() => {
-              if (imageId) {
-                router.push(`/brief?imageId=${imageId}`);
-              }
+              if (imageId) router.push(`/brief?imageId=${imageId}`);
             }}
           >
             <Icon name="arrow-right" size={17} />
@@ -223,13 +213,11 @@ export function GenerationPanel() {
         disabled={!generationStatus || generationStatus.status !== "completed"}
         type="button"
         onClick={() => {
-          if (generationStatus) {
-            router.push(buildResultPagePath(generationStatus.generationId));
-          }
+          if (generationStatus) router.push(buildResultPagePath(generationStatus.generationId));
         }}
       >
         <Icon name="arrow-right" size={17} />
-        {isGenerationActive ? "Waiting for result" : "View result"}
+        {isGenerationActive ? "Aapka karigar kaam pe hai..." : "Dekho result"}
       </button>
     </>
   );

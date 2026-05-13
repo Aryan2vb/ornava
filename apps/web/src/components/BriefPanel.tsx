@@ -29,6 +29,43 @@ const jewelryLabels: Record<JewelryType, string> = {
   other: "Other",
 };
 
+const jewelryIcons: Partial<Record<JewelryType, string>> = {
+  necklace: "/icons/necklace.svg",
+  ring: "/icons/ring.svg",
+  bracelet_bangle: "/icons/bangle.svg",
+  earrings: "/icons/earings.svg",
+  pendant: "/icons/pendent.svg",
+};
+
+const jewelryIconSize: Partial<Record<JewelryType, number>> = {
+  bracelet_bangle: 128,
+};
+
+const poseThumbnails: Record<string, string> = {
+  necklace_front_neck_crop: "/poses/necklace/centre.jpeg",
+  necklace_traditional_saree: "/poses/necklace/left.jpeg",
+  necklace_left_angle_2: "/poses/necklace/left2.jpeg",
+  necklace_left_with_hand: "/poses/necklace/left-with-hand.jpeg",
+  necklace_right_with_hand: "/poses/necklace/right-with-hand.jpeg",
+  necklace_right_angle: "/poses/necklace/right.jpeg",
+  ring_on_finger: "/poses/ring/pose1.jpeg",
+  ring_pose_2: "/poses/ring/pose2.jpeg",
+  ring_pose_3: "/poses/ring/pose3.jpeg",
+  ring_pose_4: "/poses/ring/pose4.jpeg",
+  ring_pose_5: "/poses/ring/pose5.jpeg",
+  ring_pose_6: "/poses/ring/pose6.jpeg",
+  earrings_on_ear_side: "/poses/earring/pose1.jpeg",
+  earrings_pose_2: "/poses/earring/pose2.jpeg",
+  earrings_pose_3: "/poses/earring/pose3.jpeg",
+  earrings_pose_4: "/poses/earring/pose4.jpeg",
+  pendant_neck_closeup: "/poses/necklace/centre.jpeg",
+  pendant_left_angle: "/poses/necklace/left.jpeg",
+  pendant_left_profile: "/poses/necklace/left2.jpeg",
+  pendant_left_with_hand: "/poses/necklace/left-with-hand.jpeg",
+  pendant_right_with_hand: "/poses/necklace/right-with-hand.jpeg",
+  pendant_right_angle: "/poses/necklace/right.jpeg",
+};
+
 const aspectRatioLabels: Record<AspectRatio, string> = {
   "1:1": "Square",
   "4:5": "Portrait",
@@ -161,21 +198,14 @@ export function BriefPanel() {
   return (
     <>
       <div className="screen-header">
-        <div className="eyebrow">Guided generation</div>
+        <div className="eyebrow">Ornava Studio</div>
         <h1 className="title">
           {step === "type"
-            ? "What are you selling?"
+            ? "Kya bech rahe ho?"
             : step === "pose"
-              ? "Choose the look"
-              : "Set background"}
+              ? "Look choose karo"
+              : "Background & finish"}
         </h1>
-        <p className="copy">
-          {step === "type"
-            ? "Tap the product category."
-            : step === "pose"
-              ? "Pick where your jewellery should appear."
-              : "Choose the final catalog crop."}
-        </p>
       </div>
 
       <div className="brief-progress" aria-label="Brief progress">
@@ -198,13 +228,18 @@ export function BriefPanel() {
               type="button"
               onClick={() => selectJewelryType(jewelryType)}
             >
-              <span className="icon-tile" style={{ width: 42, height: 42 }}>
-                <Icon name="diamond" size={20} />
+              <span className="icon-tile">
+                {jewelryIcons[jewelryType] ? (
+                  <img
+                    src={jewelryIcons[jewelryType]}
+                    alt=""
+                    style={jewelryIconSize[jewelryType] ? { width: jewelryIconSize[jewelryType], height: jewelryIconSize[jewelryType] } : undefined}
+                  />
+                ) : (
+                  <Icon name="diamond" size={28} />
+                )}
               </span>
-              <strong>{jewelryLabels[jewelryType]}</strong>
-              {brief.jewelryType === jewelryType ? (
-                <Icon name="check" size={17} />
-              ) : null}
+              <span className="choice-card-label">{jewelryLabels[jewelryType]}</span>
             </button>
           ))}
         </div>
@@ -218,12 +253,12 @@ export function BriefPanel() {
             </span>
             <div className="row-card-body">
               <span className="row-title">{jewelryLabels[brief.jewelryType]}</span>
-              <span className="row-subtitle">Templates show the model or scene empty</span>
             </div>
           </div>
           <div className="template-grid">
             {poseOptions.map((pose, index) => {
               const preview = getPoseTemplatePreview(pose.id);
+              const thumbnail = poseThumbnails[pose.id];
 
               return (
                 <button
@@ -234,23 +269,27 @@ export function BriefPanel() {
                   type="button"
                   onClick={() => selectPose(pose.id)}
                 >
-                  <span
-                    className={`template-preview scene-${
-                      preview?.scene ?? "studio-generic"
-                    }`}
-                    aria-hidden="true"
-                  >
-                    <span className="template-skin template-skin-primary" />
-                    <span className="template-skin template-skin-secondary" />
-                    <span className="placement-guide">{preview?.placement}</span>
-                  </span>
+                  {thumbnail ? (
+                    <span className="template-preview" aria-hidden="true">
+                      <img className="template-preview-img" src={thumbnail} alt="" />
+                    </span>
+                  ) : (
+                    <span
+                      className={`template-preview scene-${
+                        preview?.scene ?? "studio-generic"
+                      }`}
+                      aria-hidden="true"
+                    >
+                      <span className="template-skin template-skin-primary" />
+                      <span className="template-skin template-skin-secondary" />
+                      <span className="placement-guide">{preview?.placement}</span>
+                    </span>
+                  )}
                   <span className="template-card-copy">
                     <span className="template-card-header">
                       <strong>{preview?.title ?? pose.label}</strong>
                       {index === 0 ? <span className="status-pill">Best</span> : null}
                     </span>
-                    <span>{preview?.subtitle ?? pose.bestFor}</span>
-                    <small>{modeLabels[pose.generationMode]}</small>
                   </span>
                 </button>
               );
@@ -280,10 +319,10 @@ export function BriefPanel() {
 
           <div className="screen-header">
             <strong>Background</strong>
-            <div className="choice-list">
+            <div className="bg-swatch-grid">
               {BACKGROUND_PRESET_OPTIONS.map((background) => (
                 <button
-                  className={`choice-card horizontal compact${
+                  className={`bg-swatch-card${
                     brief.backgroundPresetId === background.id ? " selected" : ""
                   }`}
                   key={background.id}
@@ -296,15 +335,10 @@ export function BriefPanel() {
                   }
                 >
                   <span
-                    className="swatch"
+                    className="bg-swatch-color"
                     style={{ background: backgroundSwatches[background.id] }}
                   />
-                  <span className="choice-copy">
-                    <strong>{background.label}</strong>
-                  </span>
-                  {brief.backgroundPresetId === background.id ? (
-                    <Icon name="check" size={17} />
-                  ) : null}
+                  <span className="bg-swatch-label">{background.label}</span>
                 </button>
               ))}
             </div>

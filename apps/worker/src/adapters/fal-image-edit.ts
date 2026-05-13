@@ -19,7 +19,7 @@ type FalImageResult = {
   height?: number;
 };
 
-type FalImageSize = "square_hd" | "portrait_4_3";
+type FalImageSize = "square_hd" | "portrait_4_3" | { width: number; height: number };
 type FalQuality = "low" | "medium" | "high";
 
 function asRecord(value: unknown): Record<string, unknown> | undefined {
@@ -95,15 +95,27 @@ export function buildFalEditInput(input: {
   inputImageUrl: string;
   outputFormat: OutputFormat;
   outputQuality: OutputQuality;
+  aspectRatio?: string;
 }) {
   return {
     prompt: input.prompt,
     image_urls: [input.inputImageUrl],
-    image_size: falImageSizeForMode(input.mode),
+    image_size: input.aspectRatio
+      ? falImageSizeForAspectRatio(input.aspectRatio)
+      : falImageSizeForMode(input.mode),
     quality: falQualityForOutputQuality(input.outputQuality),
     num_images: 1,
     output_format: input.outputFormat,
   };
+}
+
+export function falImageSizeForAspectRatio(aspectRatio: string): FalImageSize {
+  const sizeMap: Record<string, FalImageSize> = {
+    "1:1": "square_hd",
+    "4:5": { width: 864, height: 1080 },
+    "3:4": { width: 816, height: 1088 },
+  };
+  return sizeMap[aspectRatio] ?? "portrait_4_3";
 }
 
 export function falImageSizeForMode(mode: GenerationMode): FalImageSize {
@@ -144,6 +156,7 @@ export const falImageEditAdapter: ImageModelAdapter = {
         inputImageUrl: request.inputImage.signedUrl,
         outputFormat: request.output.format,
         outputQuality: request.output.quality,
+        aspectRatio: request.output.aspectRatio,
       }),
       logs: true,
     } as never);
@@ -186,6 +199,7 @@ export const falImageEditAdapter: ImageModelAdapter = {
         inputImageUrl: request.inputImage.signedUrl,
         outputFormat: request.output.format,
         outputQuality: request.output.quality,
+        aspectRatio: request.output.aspectRatio,
       }),
       webhookUrl: options.webhookUrl,
     } as never);
