@@ -64,6 +64,11 @@ const poseThumbnails: Record<string, string> = {
   pendant_left_with_hand: "/poses/necklace/left-with-hand.jpeg",
   pendant_right_with_hand: "/poses/necklace/right-with-hand.jpeg",
   pendant_right_angle: "/poses/necklace/right.jpeg",
+  bracelet_straight_wrist: "/poses/bangle/pose5.jpeg",
+  bracelet_wrist_touch: "/poses/bangle/pose1.jpeg",
+  bracelet_raised_arm: "/poses/bangle/pose3.jpeg",
+  bracelet_hand_down: "/poses/bangle/pose2.jpeg",
+  bracelet_flat_back: "/poses/bangle/pose4.jpeg",
 };
 
 const aspectRatioLabels: Record<AspectRatio, string> = {

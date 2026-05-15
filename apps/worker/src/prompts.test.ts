@@ -15,10 +15,9 @@ test("buildGenerationPrompt creates a studio catalog prompt for jewelry", () => 
   });
 
   assert.equal(PROMPT_TEMPLATE_VERSION, "guided-v2");
-  assert.match(prompt, /studio catalog/i);
+  assert.match(prompt, /studio.*photograph/i);
   assert.match(prompt, /ring/i);
   assert.match(prompt, /warm ivory/i);
-  assert.match(prompt, /1:1/i);
   assert.match(prompt, /jewelry/i);
   assert.match(prompt, /preserve/i);
 });
@@ -54,17 +53,16 @@ test("buildGenerationPrompt includes zero-typing pose selections", () => {
 
   assert.match(prompt, /necklace/i);
   assert.match(prompt, /traditional blouse or saree/i);
-  assert.match(prompt, /deep red luxury/i);
-  assert.match(prompt, /4:5/i);
+  assert.match(prompt, /deep red/i);
 });
 
 test("bracelet and bangle defaults protect rigid circular product identity", () => {
   const brief = getDefaultGenerationBrief("bracelet_bangle");
   const prompt = buildGenerationPrompt(brief.generationMode, brief);
 
-  assert.equal(brief.posePresetId, "bracelet_studio_circular");
-  assert.equal(brief.generationMode, "studio");
-  assert.match(prompt, /closed circular bangle/i);
-  assert.match(prompt, /do not convert it to an open cuff/i);
+  assert.equal(brief.posePresetId, "bracelet_straight_wrist");
+  assert.equal(brief.generationMode, "on_model");
+  assert.match(prompt, /closed circular/i);
+  assert.match(prompt, /wrist.*pass through|pass through.*inner opening/i);
   assert.match(prompt, /centerpiece/i);
 });

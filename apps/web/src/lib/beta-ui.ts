@@ -2,7 +2,8 @@ import type { GenerationMode, GenerationStatus } from "@ornava/shared";
 
 export const betaNavItems = [
   { href: "/dashboard", label: "Home", icon: "home" },
-  { href: "/upload", label: "Create", icon: "camera" },
+  { href: "/upload", label: "Create", icon: "plus" },
+  { href: "/gallery", label: "Gallery", icon: "image" },
   { href: "/profile", label: "Profile", icon: "user" },
 ] as const;
 

@@ -18,14 +18,14 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
   const session = await getServerSession(authOptions);
 
   if (session) {
-    redirect("/onboarding");
+    redirect("/dashboard");
   }
 
   const resolvedSearchParams = await searchParams;
-  const callbackUrl = resolvedSearchParams?.callbackUrl || "/onboarding";
+  const callbackUrl = resolvedSearchParams?.callbackUrl || "/dashboard";
 
   return (
-    <main className="screen">
+    <main className="login-screen">
       <LoginCard
         callbackUrl={callbackUrl}
         googleConfigured={isGoogleAuthConfigured() && Boolean(env.NEXTAUTH_URL)}

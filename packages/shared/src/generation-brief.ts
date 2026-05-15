@@ -45,37 +45,44 @@ export const BACKGROUND_PRESET_OPTIONS: readonly BackgroundPreset[] = [
   {
     id: "pure_white",
     label: "Pure white",
-    promptFragment: "pure white catalog background",
+    promptFragment:
+      "pure white seamless studio background with soft gradient falloff, polished white acrylic surface with subtle reflection beneath the jewelry",
   },
   {
     id: "warm_ivory",
     label: "Warm ivory",
-    promptFragment: "warm ivory premium catalog background",
+    promptFragment:
+      "warm ivory-to-cream gradient studio background, soft golden ambient fill, polished surface with gentle jewelry reflection",
   },
   {
     id: "light_gray",
     label: "Light gray",
-    promptFragment: "soft light gray studio background",
+    promptFragment:
+      "soft light gray studio backdrop with smooth tonal gradient, matte surface with controlled shadow beneath the jewelry",
   },
   {
     id: "charcoal_black",
     label: "Charcoal black",
-    promptFragment: "charcoal black luxury background",
+    promptFragment:
+      "deep charcoal-to-black luxury backdrop, glossy black acrylic surface with mirror-like jewelry reflection, dramatic rim lighting",
   },
   {
     id: "marble",
     label: "Marble",
-    promptFragment: "subtle marble surface with premium lighting",
+    promptFragment:
+      "polished white marble surface with subtle gray veining, soft overhead lighting casting gentle shadows, luxury jewelry counter aesthetic",
   },
   {
     id: "deep_red_luxury",
     label: "Deep red luxury",
-    promptFragment: "deep red luxury catalog background",
+    promptFragment:
+      "rich deep red velvet draped surface, warm spotlight from above highlighting the gold, bridal luxury jewelry display aesthetic",
   },
   {
     id: "emerald_luxury",
     label: "Emerald luxury",
-    promptFragment: "emerald green luxury catalog background",
+    promptFragment:
+      "deep emerald green velvet surface, warm directional lighting with gold-toned highlights, royal jewelry presentation aesthetic",
   },
 ];
 
@@ -322,35 +329,107 @@ export const POSE_PRESETS: readonly PosePreset[] = [
   {
     id: "bracelet_straight_wrist",
     label: "Classic wrist",
-    bestFor: "Empty wrist pose",
+    bestFor: "Straight wrist, palm down",
     jewelryTypes: ["bracelet_bangle"],
     generationMode: "on_model",
     modelPresetId: "model_wrist",
     defaultBackgroundPresetId: "warm_ivory",
     defaultAspectRatio: "4:5",
     promptFragment:
-      "wrist scale view only if the uploaded item can remain the exact same shape, without opening or bending the jewelry",
+      "bangle on a straight wrist with hand relaxed and palm facing down, clean white background, soft studio lighting, wrist centered in frame showing full bangle circumference",
     preview: {
       scene: "wrist",
       title: "Classic wrist",
-      subtitle: "Empty wrist pose",
+      subtitle: "Straight wrist, palm down",
+      placement: "Your bracelet appears here",
+    },
+  },
+  {
+    id: "bracelet_wrist_touch",
+    label: "Wrist touch",
+    bestFor: "Hand touching wrist",
+    jewelryTypes: ["bracelet_bangle"],
+    generationMode: "on_model",
+    modelPresetId: "model_wrist",
+    defaultBackgroundPresetId: "pure_white",
+    defaultAspectRatio: "4:5",
+    promptFragment:
+      "bangle on wrist with the other hand gently touching or adjusting it, elegant feminine pose, white background, soft directional lighting highlighting the gold",
+    preview: {
+      scene: "wrist",
+      title: "Wrist touch",
+      subtitle: "Hand touching wrist",
+      placement: "Your bracelet appears here",
+    },
+  },
+  {
+    id: "bracelet_raised_arm",
+    label: "Raised arm",
+    bestFor: "Arm raised near face",
+    jewelryTypes: ["bracelet_bangle"],
+    generationMode: "on_model",
+    modelPresetId: "model_wrist",
+    defaultBackgroundPresetId: "pure_white",
+    defaultAspectRatio: "4:5",
+    promptFragment:
+      "bangle on a raised forearm near the chin/jawline, elegant pose showing the bangle from a slightly angled view, white background, premium beauty lighting",
+    preview: {
+      scene: "wrist",
+      title: "Raised arm",
+      subtitle: "Arm near face",
+      placement: "Your bracelet appears here",
+    },
+  },
+  {
+    id: "bracelet_hand_down",
+    label: "Hand down",
+    bestFor: "Relaxed hand, diagonal",
+    jewelryTypes: ["bracelet_bangle"],
+    generationMode: "on_model",
+    modelPresetId: "model_wrist",
+    defaultBackgroundPresetId: "light_gray",
+    defaultAspectRatio: "4:5",
+    promptFragment:
+      "bangle on wrist with hand relaxed pointing diagonally downward, fingers slightly spread, gray studio background, soft shadow beneath the hand",
+    preview: {
+      scene: "wrist",
+      title: "Hand down",
+      subtitle: "Relaxed diagonal",
+      placement: "Your bracelet appears here",
+    },
+  },
+  {
+    id: "bracelet_flat_back",
+    label: "Flat back",
+    bestFor: "Back of hand flat",
+    jewelryTypes: ["bracelet_bangle"],
+    generationMode: "on_model",
+    modelPresetId: "model_wrist",
+    defaultBackgroundPresetId: "pure_white",
+    defaultAspectRatio: "4:5",
+    promptFragment:
+      "bangle on wrist with hand flat showing back of hand, fingers together, white background, overhead soft lighting, clean catalog composition",
+    preview: {
+      scene: "wrist",
+      title: "Flat back",
+      subtitle: "Back of hand flat",
       placement: "Your bracelet appears here",
     },
   },
   {
     id: "bracelet_studio_circular",
-    label: "White studio",
+    label: "Studio flat",
     bestFor: "Clean bangle catalog",
     jewelryTypes: ["bracelet_bangle"],
     generationMode: "studio",
     modelPresetId: "studio_none",
     defaultBackgroundPresetId: "pure_white",
-    defaultAspectRatio: "4:5",
+    defaultAspectRatio: "1:1",
     promptFragment:
-      "full closed circular bangle or kada in a studio catalog layout, entire ring visible, centerpiece facing forward",
+      "full closed circular bangle or kada in a studio catalog layout, entire ring visible, centerpiece facing forward, polished reflective surface beneath",
     preview: {
       scene: "studio-round",
-      title: "White studio",
+      title: "Studio flat",
       subtitle: "Clean bangle catalog",
       placement: "Your bangle stays circular",
     },

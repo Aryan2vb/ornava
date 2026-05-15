@@ -3,6 +3,7 @@
 import { useEffect, useState, useTransition } from "react";
 import { Icon } from "@/components/Icon";
 import { BottomNav } from "@/components/BottomNav";
+import { SidebarNav } from "@/components/SidebarNav";
 
 type Profile = {
   id: string;
@@ -40,13 +41,19 @@ export default function ProfilePage() {
   }
 
   if (!profile) {
-    return <main className="screen"><section className="phone-frame"><div className="content"><p className="copy">Loading...</p></div></section></main>;
+    return (
+      <div className="app-shell">
+        <SidebarNav />
+        <main className="app-main"><div className="app-content"><p className="copy">Loading...</p></div></main>
+      </div>
+    );
   }
 
   return (
-    <main className="screen">
-      <section className="phone-frame">
-        <div className="content">
+    <div className="app-shell">
+      <SidebarNav />
+      <main className="app-main">
+        <div className="app-content">
           <div className="screen-header-row">
             <div className="brand-row">
               <span className="brand-mark"><Icon name="user" size={22} /></span>
@@ -91,7 +98,7 @@ export default function ProfilePage() {
           </div>
         </div>
         <BottomNav />
-      </section>
-    </main>
+      </main>
+    </div>
   );
 }

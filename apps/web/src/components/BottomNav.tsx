@@ -7,17 +7,17 @@ import { betaNavItems } from "@/lib/beta-ui";
 
 export function BottomNav() {
   const pathname = usePathname();
-
   return (
-    <nav className="nav" aria-label="Primary">
+    <nav className="bnav" aria-label="Primary navigation">
       {betaNavItems.map((item) => (
         <Link
-          className={pathname === item.href ? "active" : undefined}
           key={item.href}
           href={item.href}
+          className={`bnav-item ${pathname === item.href ? "bnav-active" : ""}`}
+          aria-label={item.label}
         >
-          <Icon name={item.icon} size={19} />
-          {item.label}
+          <Icon name={item.icon} size={20} />
+          <span className="bnav-label">{item.label}</span>
         </Link>
       ))}
     </nav>

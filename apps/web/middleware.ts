@@ -8,6 +8,7 @@ const protectedPrefixes = [
   "/generating",
   "/result",
   "/dashboard",
+  "/gallery",
   "/profile",
   "/admin/generations",
   "/brief",

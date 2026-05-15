@@ -283,132 +283,166 @@ export function ResultView() {
   }
 
   return (
-    <>
-      <div className="screen-header-row">
-        <div className="screen-header">
-          <h1 className="title">Dekho aur share karo</h1>
-        </div>
-        <span className="status-pill">
-          <Icon name="check" size={14} />
-          Ready
-        </span>
-      </div>
-
-      {/* Before/After Comparison Slider */}
-      <div className="compare-slider">
-        <div className="compare-slider-container">
-          <img
-            alt="Generated jewelry catalog output"
-            className="compare-img compare-img--generated"
-            src={result.assets.generated.url}
-          />
-          <div
-            className="compare-img-clip"
-            style={{ "--clip": `${sliderPos}%` } as CSSProperties}
-          >
-            <img
-              alt="Original jewelry upload"
-              className="compare-img"
-              src={result.assets.original.url}
-            />
+    <div className="result-layout">
+      <div className="result-col-left">
+        <div className="screen-header-row">
+          <div className="screen-header">
+            <h1 className="title">Dekho aur share karo</h1>
           </div>
-          <div
-            className="compare-handle"
-            style={{ left: `${sliderPos}%` }}
-          >
-            <div className="compare-handle-line" />
-            <div className="compare-handle-knob">
-              <Icon name="arrow-left" size={10} />
-              <Icon name="arrow-left" size={10} style={{ transform: "rotate(180deg)" }} />
-            </div>
-            <div className="compare-handle-line" />
-          </div>
-          <input
-            aria-label="Compare original and generated"
-            className="compare-range"
-            max="100"
-            min="0"
-            type="range"
-            value={sliderPos}
-            onChange={(e) => setSliderPos(Number(e.target.value))}
-          />
-          <span className="compare-label compare-label--left">Original</span>
-          <span className="compare-label compare-label--right">Generated</span>
-        </div>
-        <figcaption className="result-meta">
-          <span className="brand-row">
-            <Icon name="calendar" size={14} />
-            {modeLabels[result.mode]}
+          <span className="status-pill">
+            <Icon name="check" size={14} />
+            Ready
           </span>
-          {result.generationDurationMs ? (
-            <span>{Math.round(result.generationDurationMs / 1000)}s</span>
-          ) : null}
-        </figcaption>
+        </div>
+
+        {/* Before/After Comparison Slider */}
+        <div className="compare-slider">
+          <div className="compare-slider-container">
+            <img
+              alt="Generated jewelry catalog output"
+              className="compare-img compare-img--generated"
+              src={result.assets.generated.url}
+            />
+            <div
+              className="compare-img-clip"
+              style={{ "--clip": `${sliderPos}%` } as CSSProperties}
+            >
+              <img
+                alt="Original jewelry upload"
+                className="compare-img"
+                src={result.assets.original.url}
+              />
+            </div>
+            <div
+              className="compare-handle"
+              style={{ left: `${sliderPos}%` }}
+            >
+              <div className="compare-handle-line" />
+              <div className="compare-handle-knob">
+                <Icon name="arrow-left" size={10} />
+                <Icon name="arrow-left" size={10} style={{ transform: "rotate(180deg)" }} />
+              </div>
+              <div className="compare-handle-line" />
+            </div>
+            <input
+              aria-label="Compare original and generated"
+              className="compare-range"
+              max="100"
+              min="0"
+              type="range"
+              value={sliderPos}
+              onChange={(e) => setSliderPos(Number(e.target.value))}
+            />
+            <span className="compare-label compare-label--left">Original</span>
+            <span className="compare-label compare-label--right">Generated</span>
+          </div>
+          <figcaption className="result-meta">
+            <span className="brand-row">
+              <Icon name="calendar" size={14} />
+              {modeLabels[result.mode]}
+            </span>
+            {result.generationDurationMs ? (
+              <span>{Math.round(result.generationDurationMs / 1000)}s</span>
+            ) : null}
+          </figcaption>
+        </div>
       </div>
 
-      <button
-        className="button whatsapp"
-        disabled={isSharing}
-        type="button"
-        onClick={shareResult}
-        style={{ width: "100%", minHeight: 52, fontSize: 16 }}
-      >
-        {isSharing ? (
-          <span className="spinner" aria-hidden="true" />
-        ) : (
-          <Icon name="phone" size={20} />
-        )}
-        {isSharing ? "Opening..." : "WhatsApp pe bhejo"}
-      </button>
-
-      <div className="button-row">
+      <div className="result-col-right">
         <button
-          className="button secondary"
+          className="button whatsapp"
           disabled={isSharing}
           type="button"
-          onClick={downloadResult}
+          onClick={shareResult}
+          style={{ width: "100%", minHeight: 52, fontSize: 16 }}
         >
-          <Icon name="download" size={17} />
-          Save
-        </button>
-        <button
-          className="button secondary"
-          disabled={isRetrying}
-          type="button"
-          onClick={retryGeneration}
-        >
-          {isRetrying ? (
+          {isSharing ? (
             <span className="spinner" aria-hidden="true" />
           ) : (
-            <Icon name="refresh" size={16} />
+            <Icon name="phone" size={20} />
           )}
-          Retry
+          {isSharing ? "Opening..." : "WhatsApp pe bhejo"}
         </button>
-      </div>
 
-      <div className="soft-panel">
-        <div className="screen-header-row">
-          <strong style={{ fontSize: 16, lineHeight: "21px" }}>
-            Good enough to send?
-          </strong>
-          <span className="copy" style={{ fontSize: 12 }}>
-            Beta feedback
-          </span>
-        </div>
         <div className="button-row">
           <button
-            className="button"
-            disabled={isSubmittingFeedback}
+            className="button secondary"
+            disabled={isSharing}
             type="button"
-            onClick={() => submitFeedback({ rating: "usable" })}
+            onClick={downloadResult}
           >
-            {isSubmittingFeedback ? (
+            <Icon name="download" size={17} />
+            Save
+          </button>
+          <button
+            className="button secondary"
+            disabled={isRetrying}
+            type="button"
+            onClick={retryGeneration}
+          >
+            {isRetrying ? (
               <span className="spinner" aria-hidden="true" />
             ) : (
-              <Icon name="check" size={16} />
+              <Icon name="refresh" size={16} />
             )}
-            {isSubmittingFeedback ? "Saving..." : "Usable"}
+            Retry
           </button>
+        </div>
+
+        <div className="soft-panel">
+          <div className="screen-header-row">
+            <strong style={{ fontSize: 16, lineHeight: "21px" }}>
+              Good enough to send?
+            </strong>
+            <span className="copy" style={{ fontSize: 12 }}>
+              Beta feedback
+            </span>
+          </div>
+          <div className="button-row">
+            <button
+              className="button"
+              disabled={isSubmittingFeedback}
+              type="button"
+              onClick={() => submitFeedback({ rating: "usable" })}
+            >
+              {isSubmittingFeedback ? (
+                <span className="spinner" aria-hidden="true" />
+              ) : (
+                <Icon name="check" size={16} />
+              )}
+              {isSubmittingFeedback ? "Saving..." : "Usable"}
+            </button>
+            <button
+              className="button secondary"
+              disabled={isSubmittingFeedback}
+              type="button"
+              onClick={() =>
+                submitFeedback({
+                  rating: "not_usable",
+                  reason: selectedReason,
+                })
+              }
+            >
+              Not usable
+            </button>
+          </div>
+          <label className="field-label" htmlFor="feedback-reason">
+            Reason if not usable
+          </label>
+          <select
+            className="select"
+            id="feedback-reason"
+            value={selectedReason}
+            onChange={(event) =>
+              setSelectedReason(event.target.value as FeedbackReason)
+            }
+          >
+            {feedbackReasonOptions.map(([reason, label]) => (
+              <option key={reason} value={reason}>
+                {label}
+              </option>
+            ))}
+          </select>
           <button
             className="button secondary"
             disabled={isSubmittingFeedback}
@@ -420,46 +454,16 @@ export function ResultView() {
               })
             }
           >
-            Not usable
+            Save not-usable feedback
           </button>
+          {feedbackMessage ? (
+            <p className="status-text">{feedbackMessage}</p>
+          ) : null}
+          {feedbackError ? (
+            <p className="status-text error">{feedbackError}</p>
+          ) : null}
         </div>
-        <label className="field-label" htmlFor="feedback-reason">
-          Reason if not usable
-        </label>
-        <select
-          className="select"
-          id="feedback-reason"
-          value={selectedReason}
-          onChange={(event) =>
-            setSelectedReason(event.target.value as FeedbackReason)
-          }
-        >
-          {feedbackReasonOptions.map(([reason, label]) => (
-            <option key={reason} value={reason}>
-              {label}
-            </option>
-          ))}
-        </select>
-        <button
-          className="button secondary"
-          disabled={isSubmittingFeedback}
-          type="button"
-          onClick={() =>
-            submitFeedback({
-              rating: "not_usable",
-              reason: selectedReason,
-            })
-          }
-        >
-          Save not-usable feedback
-        </button>
-        {feedbackMessage ? (
-          <p className="status-text">{feedbackMessage}</p>
-        ) : null}
-        {feedbackError ? (
-          <p className="status-text error">{feedbackError}</p>
-        ) : null}
       </div>
-    </>
+    </div>
   );
 }

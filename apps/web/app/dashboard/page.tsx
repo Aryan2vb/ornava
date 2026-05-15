@@ -4,14 +4,13 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Icon } from "@/components/Icon";
 import { BottomNav } from "@/components/BottomNav";
+import { SidebarNav } from "@/components/SidebarNav";
 
 type Generation = {
   id: string;
-  image_id: string;
   mode: string;
   status: string;
   generation_brief: { jewelryType?: string };
-  output_object_key: string | null;
   feedback_rating: string | null;
   feedback_reason: string | null;
   generation_duration_ms: number | null;
@@ -28,88 +27,85 @@ export default function DashboardPage() {
   }, []);
 
   return (
-    <main className="screen">
-      <section className="phone-frame">
-        <div className="content">
-          <div className="screen-header-row">
-            <div className="screen-header">
-              <h1 className="title">Ornava</h1>
-              <p className="copy">WhatsApp-ready catalog images.</p>
+    <div className="app-shell">
+      <SidebarNav />
+      <main className="app-main">
+        <div className="app-content">
+          {/* Header */}
+          <div className="dash-header">
+            <div>
+              <h1 className="dash-title">Dashboard</h1>
+              <p className="dash-sub">WhatsApp-ready catalog images</p>
             </div>
-            <Link href="/profile" className="credit-pill" style={{ textDecoration: "none" }}>
-              <Icon name="diamond" size={14} />
-              {credits !== null ? `${credits} credits` : "..."}
-            </Link>
-          </div>
-
-          <div className="soft-panel">
-            <div className="screen-header-row">
-              <div className="screen-header">
-                <h2 className="title" style={{ fontSize: 22, lineHeight: "27px" }}>Create from a phone photo</h2>
-                <p className="copy">Upload, choose style, and send the finished image to a buyer.</p>
-              </div>
-              <span className="icon-tile"><Icon name="camera" size={25} /></span>
+            <div className="dash-header-actions">
+              <Link href="/profile" className="credit-pill" style={{ textDecoration: "none" }}>
+                <Icon name="diamond" size={14} />
+                {credits !== null ? `${credits} credits` : "—"}
+              </Link>
+              <Link href="/upload" className="dash-create-btn">
+                <Icon name="plus" size={16} />
+                New image
+              </Link>
             </div>
-            <Link className="button" href="/upload">
-              <Icon name="plus" size={17} />
-              Start new image
-            </Link>
           </div>
 
-          <div className="screen-header-row" style={{ marginTop: "16px" }}>
-            <strong style={{ fontSize: 17, lineHeight: "23px" }}>Recent work</strong>
-            <span className="copy" style={{ fontSize: "13px" }}>{generations.length} generations</span>
-          </div>
-
+          {/* Create CTA — shown when no generations */}
           {generations.length === 0 && (
-            <p className="copy" style={{ textAlign: "center", padding: "24px 0" }}>No generations yet. Start your first one!</p>
+            <div className="dash-empty">
+              <Icon name="camera" size={32} />
+              <p>No images yet</p>
+              <Link href="/upload" className="dash-create-btn">
+                <Icon name="plus" size={16} />
+                Create your first image
+              </Link>
+            </div>
           )}
 
-          {generations.map((g) => (
-            <Link
-              key={g.id}
-              href={g.status === "completed" ? `/result?generationId=${g.id}` : "#"}
-              className="row-card"
-              style={{ textDecoration: "none", color: "inherit" }}
-            >
-              <span className="icon-tile" style={{ width: 58, height: 58 }}>
-                <Icon name={g.status === "completed" ? "image" : g.status === "failed" ? "x" : "spark"} size={25} />
-              </span>
-              <div className="row-card-body">
-                <span className="row-title">{g.generation_brief?.jewelryType?.replace("_", " ") || g.mode}</span>
-                <span className="row-subtitle">
-                  {g.mode.replace("_", " ")}
-                  {g.generation_duration_ms ? ` · ${Math.round(g.generation_duration_ms / 1000)}s` : ""}
-                  {" · "}{new Date(g.created_at).toLocaleDateString()}
-                </span>
+          {/* Generations grid */}
+          {generations.length > 0 && (
+            <>
+              <div className="dash-section-header">
+                <strong>Recent</strong>
+                <span className="dash-count">{generations.length}</span>
               </div>
-              <StatusBadge status={g.status} rating={g.feedback_rating} reason={g.feedback_reason} />
-            </Link>
-          ))}
+              <div className="dash-grid">
+                {generations.map((g) => (
+                  <Link
+                    key={g.id}
+                    href={g.status === "completed" ? `/result?generationId=${g.id}` : "#"}
+                    className="dash-card"
+                  >
+                    <div className="dash-card-thumb">
+                      <Icon
+                        name={g.status === "completed" ? "image" : g.status === "failed" ? "x" : "spark"}
+                        size={24}
+                      />
+                    </div>
+                    <div className="dash-card-info">
+                      <span className="dash-card-title">
+                        {g.generation_brief?.jewelryType?.replace("_", " ") || g.mode.replace("_", " ")}
+                      </span>
+                      <span className="dash-card-meta">
+                        {g.mode.replace("_", " ")} · {new Date(g.created_at).toLocaleDateString()}
+                      </span>
+                    </div>
+                    <StatusBadge status={g.status} rating={g.feedback_rating} />
+                  </Link>
+                ))}
+              </div>
+            </>
+          )}
         </div>
         <BottomNav />
-      </section>
-    </main>
+      </main>
+    </div>
   );
 }
 
-function StatusBadge({ status, rating, reason }: { status: string; rating: string | null; reason: string | null }) {
-  if (status === "completed" && rating === "usable") {
-    return <span className="status-pill"><Icon name="check" size={13} /> Usable</span>;
-  }
-  if (status === "completed" && rating === "not_usable") {
-    return <span className="status-pill" style={{ background: "#fee", color: "#c33" }}>{reason?.replace(/_/g, " ") || "Not usable"}</span>;
-  }
-  if (status === "completed") {
-    return <span className="status-pill">Done</span>;
-  }
-  if (status === "failed") {
-    return <span className="status-pill" style={{ background: "#fee", color: "#c33" }}>Failed</span>;
-  }
-  return (
-    <span className="status-text">
-      <span className="pulse-dot" aria-hidden="true" />
-      {status === "queued" ? "Queued" : "Running"}
-    </span>
-  );
+function StatusBadge({ status, rating }: { status: string; rating: string | null }) {
+  if (status === "completed" && rating === "usable") return <span className="status-pill"><Icon name="check" size={12} /> Usable</span>;
+  if (status === "completed" && rating === "not_usable") return <span className="status-pill" style={{ background: "#fee", color: "#c33" }}>Not usable</span>;
+  if (status === "completed") return <span className="status-pill">Done</span>;
+  if (status === "failed") return <span className="status-pill" style={{ background: "#fee", color: "#c33" }}>Failed</span>;
+  return <span className="status-text"><span className="pulse-dot" />{status === "queued" ? "Queued" : "Running"}</span>;
 }

@@ -7,18 +7,10 @@ import type {
   UploadInitResponse,
 } from "@ornava/shared";
 import { useRouter } from "next/navigation";
-import type { CSSProperties } from "react";
 import { useRef, useState, useTransition } from "react";
 import { Icon } from "./Icon";
-import {
-  buildUploadProxyPath,
-  isBrowserUploadNetworkError,
-} from "@/lib/upload";
-import {
-  getUploadStepProgress,
-  uploadActivitySteps,
-  type UploadActivityStep,
-} from "@/lib/beta-ui";
+import { buildUploadProxyPath, isBrowserUploadNetworkError } from "@/lib/upload";
+import { getUploadStepProgress, uploadActivitySteps, type UploadActivityStep } from "@/lib/beta-ui";
 import { compressImageForGeneration } from "@/lib/image-compression";
 
 const MAX_UPLOAD_BYTES = 20_000_000;
@@ -27,288 +19,173 @@ const SUPPORTED_TYPES = new Set(["image/jpeg", "image/png"]);
 type UploadState =
   | { status: "idle" }
   | { status: "uploading"; step: UploadActivityStep }
-  | {
-      status: "uploaded";
-      imageId: string;
-      fileName: string;
-      compressionApplied: boolean;
-    }
+  | { status: "uploaded"; imageId: string; fileName: string; compressionApplied: boolean }
   | { status: "error"; message: string };
 
 function getImageDimensions(file: File) {
   return new Promise<{ width: number; height: number }>((resolve, reject) => {
-    const image = new Image();
-    const objectUrl = URL.createObjectURL(file);
-
-    image.onload = () => {
-      URL.revokeObjectURL(objectUrl);
-      resolve({ width: image.naturalWidth, height: image.naturalHeight });
-    };
-
-    image.onerror = () => {
-      URL.revokeObjectURL(objectUrl);
-      reject(new Error("Could not read image dimensions."));
-    };
-
-    image.src = objectUrl;
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => { URL.revokeObjectURL(url); resolve({ width: img.naturalWidth, height: img.naturalHeight }); };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("Could not read image.")); };
+    img.src = url;
   });
 }
 
-async function postJson<TResponse>(url: string, body: unknown) {
-  const response = await fetch(url, {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-    },
-    body: JSON.stringify(body),
-  });
-
-  if (!response.ok) {
-    const errorBody = await response.json().catch(() => null);
-    throw new Error(errorBody?.error ?? "Request failed.");
-  }
-
-  return (await response.json()) as TResponse;
+async function postJson<T>(url: string, body: unknown) {
+  const r = await fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+  if (!r.ok) { const e = await r.json().catch(() => null); throw new Error(e?.error ?? "Request failed."); }
+  return r.json() as Promise<T>;
 }
 
-async function postFormData<TResponse>(url: string, body: FormData) {
-  const response = await fetch(url, {
-    method: "POST",
-    body,
-  });
-
-  if (!response.ok) {
-    const errorBody = await response.json().catch(() => null);
-    throw new Error(errorBody?.error ?? "Request failed.");
-  }
-
-  return (await response.json()) as TResponse;
+async function postFormData<T>(url: string, body: FormData) {
+  const r = await fetch(url, { method: "POST", body });
+  if (!r.ok) { const e = await r.json().catch(() => null); throw new Error(e?.error ?? "Request failed."); }
+  return r.json() as Promise<T>;
 }
 
 export function UploadPanel() {
   const inputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
   const [state, setState] = useState<UploadState>({ status: "idle" });
-  const [isPending, startTransition] = useTransition();
-  const uploadProgress =
-    state.status === "uploaded"
-      ? getUploadStepProgress("uploaded")
-      : state.status === "uploading"
-        ? getUploadStepProgress(state.step)
-        : 0;
-  const uploadStatusLabel =
-    state.status === "uploaded"
-      ? uploadActivitySteps.uploaded.label
-      : state.status === "uploading"
-        ? uploadActivitySteps[state.step].label
-        : "Waiting for photo";
+  const [preview, setPreview] = useState<string | null>(null);
+  const [, startTransition] = useTransition();
+
+  const progress = state.status === "uploaded" ? 100 : state.status === "uploading" ? getUploadStepProgress(state.step) : 0;
+  const isUploading = state.status === "uploading";
+  const isDone = state.status === "uploaded";
 
   async function uploadFile(file: File) {
-    if (!SUPPORTED_TYPES.has(file.type)) {
-      setState({ status: "error", message: "Use a JPG or PNG image." });
-      return;
-    }
+    if (!SUPPORTED_TYPES.has(file.type)) { setState({ status: "error", message: "Use a JPG or PNG photo." }); return; }
+    if (file.size > MAX_UPLOAD_BYTES) { setState({ status: "error", message: "Photo must be under 20MB." }); return; }
 
-    if (file.size > MAX_UPLOAD_BYTES) {
-      setState({ status: "error", message: "Use an image up to 20MB." });
-      return;
-    }
+    setPreview(URL.createObjectURL(file));
 
     try {
       setState({ status: "uploading", step: "reading" });
       const dimensions = await getImageDimensions(file);
       setState({ status: "uploading", step: "optimizing" });
-      const generationInput = await compressImageForGeneration({
-        file,
-        dimensions,
-      });
-
-      const initRequest: UploadInitRequest = {
-        fileName: generationInput.file.name,
-        fileType: generationInput.file.type as UploadInitRequest["fileType"],
-        fileSizeBytes: generationInput.file.size,
-        width: generationInput.dimensions.width,
-        height: generationInput.dimensions.height,
-      };
+      const gen = await compressImageForGeneration({ file, dimensions });
 
       setState({ status: "uploading", step: "preparing" });
-      const initResponse = await postJson<UploadInitResponse>(
-        "/api/uploads/init",
-        initRequest,
-      );
+      const init = await postJson<UploadInitResponse>("/api/uploads/init", {
+        fileName: gen.file.name,
+        fileType: gen.file.type as "image/jpeg" | "image/png",
+        fileSizeBytes: gen.file.size,
+        width: gen.dimensions.width,
+        height: gen.dimensions.height,
+      } satisfies UploadInitRequest);
 
-      const completeRequest: UploadCompleteRequest = {
-        imageId: initResponse.imageId,
-        objectKey: initResponse.objectKey,
-      };
-
-      let completeResponse: UploadCompleteResponse;
-
+      let complete: UploadCompleteResponse;
       try {
         setState({ status: "uploading", step: "uploading" });
-        const uploadResponse = await fetch(initResponse.uploadUrl, {
-          method: "PUT",
-          headers: {
-            "content-type": generationInput.file.type,
-          },
-          body: generationInput.file,
-        });
-
-        if (!uploadResponse.ok) {
-          throw new Error("R2 upload failed.");
-        }
-
+        const up = await fetch(init.uploadUrl, { method: "PUT", headers: { "content-type": gen.file.type }, body: gen.file });
+        if (!up.ok) throw new Error("Upload failed.");
         setState({ status: "uploading", step: "saving" });
-        completeResponse = await postJson<UploadCompleteResponse>(
-          "/api/uploads/complete",
-          completeRequest,
-        );
-      } catch (uploadError) {
-        if (!isBrowserUploadNetworkError(uploadError)) {
-          throw uploadError;
-        }
-
+        complete = await postJson<UploadCompleteResponse>("/api/uploads/complete", { imageId: init.imageId, objectKey: init.objectKey } satisfies UploadCompleteRequest);
+      } catch (err) {
+        if (!isBrowserUploadNetworkError(err)) throw err;
         setState({ status: "uploading", step: "uploading" });
-        const proxyUpload = new FormData();
-        proxyUpload.append("file", generationInput.file);
-        proxyUpload.append("objectKey", initResponse.objectKey);
-
-        completeResponse = await postFormData<UploadCompleteResponse>(
-          buildUploadProxyPath(initResponse.imageId),
-          proxyUpload,
-        );
+        const fd = new FormData();
+        fd.append("file", gen.file);
+        fd.append("objectKey", init.objectKey);
+        complete = await postFormData<UploadCompleteResponse>(buildUploadProxyPath(init.imageId), fd);
       }
 
-      setState({
-        status: "uploaded",
-        imageId: completeResponse.imageId,
-        fileName: file.name,
-        compressionApplied: generationInput.compressionApplied,
-      });
-    } catch (error) {
-      setState({
-        status: "error",
-        message:
-          error instanceof Error
-            ? error.message
-            : "Upload failed. Please try again.",
-      });
+      setState({ status: "uploaded", imageId: complete.imageId, fileName: file.name, compressionApplied: gen.compressionApplied });
+    } catch (err) {
+      setState({ status: "error", message: err instanceof Error ? err.message : "Upload failed. Try again." });
     }
   }
 
-  function handleFileChange(event: React.ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
+  function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (file) startTransition(() => { void uploadFile(file); });
+  }
 
-    if (!file) {
-      return;
-    }
-
-    startTransition(() => {
-      void uploadFile(file);
-    });
+  function handleDrop(e: React.DragEvent) {
+    e.preventDefault();
+    const file = e.dataTransfer.files?.[0];
+    if (file) startTransition(() => { void uploadFile(file); });
   }
 
   return (
-    <>
-      <div className="asset-slot" aria-label="Upload jewelry photo">
-        <span className="icon-tile" style={{ width: 76, height: 76, borderRadius: 20 }}>
-          <Icon name="camera" size={34} />
-        </span>
-        <div>
-          <strong style={{ fontSize: 21, lineHeight: "26px" }}>
-            Choose or capture photo
-          </strong>
-          <p className="copy">
-            JPG or PNG up to 20MB. Use the real product photo here.
-          </p>
-        </div>
-        <input
-          ref={inputRef}
-          accept="image/jpeg,image/png"
-          className="visually-hidden"
-          type="file"
-          onChange={handleFileChange}
-        />
-        <button
-          className="button"
-          disabled={state.status === "uploading" || isPending}
-          type="button"
-          onClick={() => inputRef.current?.click()}
-        >
-          {state.status === "uploading" ? (
-            <span className="spinner" aria-hidden="true" />
-          ) : (
-            <Icon name="download" size={17} />
-          )}
-          {state.status === "uploading" ? "Working..." : "Select photo"}
-        </button>
+    <div className="up-page">
+      {/* Header */}
+      <div className="up-header">
+        <h1 className="up-title">Upload photo</h1>
+        <p className="up-subtitle">Use a clear photo of your jewelry</p>
       </div>
-      <div className="panel">
-        <div className="screen-header-row">
-          <div className="row-card" style={{ border: 0, padding: 0 }}>
-            <span className="icon-tile" style={{ width: 34, height: 34 }}>
-              <Icon name="clock" size={18} />
-            </span>
-            <div className="row-card-body">
-              <strong>Optimized before upload</strong>
-              <p className="copy">Large photos become a smaller generation source.</p>
-            </div>
-          </div>
-          <span className="status-pill">{uploadProgress}%</span>
-        </div>
-        <div className="progress-bar" aria-hidden="true">
-          <div
-            className="progress-fill"
-            style={{ width: `${uploadProgress}%` } as CSSProperties}
-          />
-        </div>
-        <p className="copy">{uploadStatusLabel}</p>
-        {state.status === "uploading" ? (
-          <p className="status-text">
-            <span className="pulse-dot" aria-hidden="true" />
-            {uploadActivitySteps[state.step].label}...
-          </p>
-        ) : null}
-        {state.status === "error" ? (
-          <p className="status-text error">{state.message}</p>
-        ) : null}
-        {state.status === "uploaded" ? (
-          <div className="upload-success">
-            <strong>{state.fileName}</strong>
-            <p className="copy">
-              {state.compressionApplied
-                ? "Optimized image uploaded and saved."
-                : "Image uploaded and saved."}
-            </p>
-          </div>
-        ) : null}
-      </div>
-      <div className="soft-panel">
-        <strong>Best photo checklist</strong>
-        {[
-          "Full jewelry visible",
-          "No text stickers or screenshots",
-          "Sharpest available photo",
-        ].map((item) => (
-          <div className="brand-row" key={item}>
-            <Icon name="check" size={15} style={{ color: "var(--success)" }} />
-            <span>{item}</span>
-          </div>
-        ))}
-      </div>
+
+      {/* Drop zone */}
       <button
-        className="button"
-        disabled={state.status !== "uploaded"}
+        className={`up-zone ${isDone ? "up-zone-done" : ""} ${isUploading ? "up-zone-loading" : ""}`}
         type="button"
-        onClick={() => {
-          if (state.status === "uploaded") {
-            router.push(`/brief?imageId=${state.imageId}`);
-          }
-        }}
+        onClick={() => !isDone && inputRef.current?.click()}
+        onDragOver={(e) => e.preventDefault()}
+        onDrop={handleDrop}
+        aria-label="Select jewelry photo"
       >
-        <Icon name="arrow-right" size={17} />
-        Continue
+        {preview ? (
+          <img src={preview} alt="Preview" className="up-preview" />
+        ) : (
+          <div className="up-zone-inner">
+            <div className="up-zone-icon">
+              <Icon name="camera" size={28} />
+            </div>
+            <span className="up-zone-label">Tap to select photo</span>
+            <span className="up-zone-hint">JPG or PNG · max 20MB</span>
+          </div>
+        )}
+
+        {/* Progress overlay */}
+        {isUploading && (
+          <div className="up-overlay">
+            <div className="up-overlay-bar">
+              <div className="up-overlay-fill" style={{ width: `${progress}%` }} />
+            </div>
+            <span className="up-overlay-label">{uploadActivitySteps[state.step].label}</span>
+          </div>
+        )}
+
+        {/* Done checkmark */}
+        {isDone && (
+          <div className="up-done-badge">
+            <Icon name="check" size={14} />
+          </div>
+        )}
       </button>
-    </>
+
+      <input ref={inputRef} accept="image/jpeg,image/png" className="visually-hidden" type="file" onChange={handleChange} />
+
+      {/* Error */}
+      {state.status === "error" && (
+        <div className="up-error">
+          <Icon name="x" size={15} />
+          <span>{state.message}</span>
+        </div>
+      )}
+
+      {/* Tips — only when idle */}
+      {state.status === "idle" && (
+        <div className="up-tips">
+          <span>Full jewelry visible</span>
+          <span>·</span>
+          <span>No stickers or text</span>
+          <span>·</span>
+          <span>Sharp & well-lit</span>
+        </div>
+      )}
+
+      {/* CTA */}
+      <button
+        className="up-cta"
+        disabled={!isDone}
+        type="button"
+        onClick={() => isDone && state.status === "uploaded" && router.push(`/brief?imageId=${state.imageId}`)}
+      >
+        {isDone ? "Continue →" : isUploading ? `Uploading ${progress}%` : "Select a photo first"}
+      </button>
+    </div>
   );
 }
