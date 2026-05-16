@@ -1,7 +1,7 @@
 import type { UploadCompleteResponse } from "@ornava/shared";
 import { NextResponse } from "next/server";
 import { z, ZodError } from "zod";
-import { markImageUploaded } from "@/lib/db";
+import { markImageUploaded, getPool } from "@/lib/db";
 import { logAnalyticsEventSafe } from "@/lib/events";
 import { getRequiredUserId } from "@/lib/session";
 
@@ -28,6 +28,20 @@ export async function POST(request: Request) {
     if (!image) {
       return NextResponse.json({ error: "image_not_found" }, { status: 404 });
     }
+
+    // Increment batch image_count if image belongs to a batch
+    const batchCheck = await getPool().query<{ batch_id: string | null }>(
+      `SELECT batch_id FROM images WHERE id = $1`,
+      [image.id],
+    );
+    const batchId = batchCheck.rows[0]?.batch_id;
+    if (batchId) {
+      await getPool().query(
+        `UPDATE batches SET image_count = image_count + 1 WHERE id = $1`,
+        [batchId],
+      );
+    }
+
     await logAnalyticsEventSafe({
       userId,
       name: "upload_completed",

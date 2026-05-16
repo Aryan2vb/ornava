@@ -1,5 +1,5 @@
 import { fal } from "@fal-ai/client";
-import { getPool } from "./db";
+import { getPool, incrementBatchCompleted, incrementBatchFailed } from "./db";
 import { env } from "./env";
 import { putGeneratedImageObject, buildGeneratedObjectKey, contentTypeForOutputFormat } from "./storage";
 import { extractFalImageResult, downloadGeneratedImage } from "./adapters/fal-image-edit";
@@ -30,6 +30,7 @@ type StuckGeneration = {
   mode: string;
   provider_model_id: string;
   provider_job_id: string;
+  batch_id: string | null;
   started_at: string;
   age_ms: number;
 };
@@ -44,6 +45,7 @@ async function findStuckGenerations(): Promise<StuckGeneration[]> {
         mode::text,
         provider_model_id,
         provider_job_id,
+        batch_id,
         started_at::text,
         extract(epoch from (now() - started_at))::int * 1000 as age_ms
       from generations
@@ -139,6 +141,9 @@ async function checkAndRecoverGeneration(gen: StuckGeneration) {
       });
 
       await markGenerationCompletedByReaper(gen.id, objectKey, gen.age_ms);
+      if (gen.batch_id) {
+        await incrementBatchCompleted(gen.batch_id);
+      }
       return;
     }
 
@@ -152,6 +157,9 @@ async function checkAndRecoverGeneration(gen: StuckGeneration) {
         "provider_timeout",
         "Image generation took too long. Please retry.",
       );
+      if (gen.batch_id) {
+        await incrementBatchFailed(gen.batch_id);
+      }
     }
     // Otherwise, leave it alone and let the webhook arrive
   } catch (error) {
@@ -165,6 +173,9 @@ async function checkAndRecoverGeneration(gen: StuckGeneration) {
         "provider_unavailable",
         "Could not reach image generation service. Please retry.",
       );
+      if (gen.batch_id) {
+        await incrementBatchFailed(gen.batch_id);
+      }
     }
   }
 }

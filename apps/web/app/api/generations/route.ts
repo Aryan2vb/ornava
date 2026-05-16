@@ -3,9 +3,9 @@ import { NextResponse } from "next/server";
 import { ZodError } from "zod";
 import {
   createGeneration,
-  deductCredit,
-  getUserCredits,
+  deductCreditsAtomic,
   getUploadedImageForUser,
+  refundCredits,
 } from "@/lib/db";
 import {
   resolveModelRouteForMode,
@@ -23,12 +23,6 @@ export async function POST(request: Request) {
   }
 
   try {
-    const credits = await getUserCredits(userId);
-
-    if (credits <= 0) {
-      return NextResponse.json({ error: "no_credits", message: "No credits remaining" }, { status: 403 });
-    }
-
     const generationRequest = validateCreateGenerationRequest(await request.json());
     const image = await getUploadedImageForUser({
       userId,
@@ -39,24 +33,38 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "image_not_found" }, { status: 404 });
     }
 
-    const modelRoute = resolveModelRouteForMode(generationRequest.mode);
-    const generation = await createGeneration({
-      userId,
-      imageId: image.id,
-      mode: generationRequest.mode,
-      modelRoute,
-      generationBrief: generationRequest.generationBrief,
-      clientRequestId: generationRequest.clientRequestId,
-    });
+    // Deduct after validation, but before enqueueing, so concurrent requests
+    // cannot overdraw credits.
+    const deducted = await deductCreditsAtomic({ userId, amount: 1 });
+    if (!deducted) {
+      return NextResponse.json({ error: "no_credits", message: "No credits remaining" }, { status: 403 });
+    }
 
-    await enqueueGenerationJob({
-      generationId: generation.id,
-      userId,
-      imageId: image.id,
-      mode: generation.mode,
-      modelRoute: generation.model_route,
-    });
-    await deductCredit(userId);
+    const modelRoute = resolveModelRouteForMode(generationRequest.mode);
+    let generation: Awaited<ReturnType<typeof createGeneration>>;
+
+    try {
+      generation = await createGeneration({
+        userId,
+        imageId: image.id,
+        mode: generationRequest.mode,
+        modelRoute,
+        generationBrief: generationRequest.generationBrief,
+        clientRequestId: generationRequest.clientRequestId,
+        overlayText: image.overlay_text,
+      });
+
+      await enqueueGenerationJob({
+        generationId: generation.id,
+        userId,
+        imageId: image.id,
+        mode: generation.mode,
+        modelRoute: generation.model_route,
+      });
+    } catch (error) {
+      await refundCredits({ userId, amount: 1 });
+      throw error;
+    }
     await logAnalyticsEventSafe({
       userId,
       name: "generation_requested",
@@ -65,20 +73,6 @@ export async function POST(request: Request) {
         imageId: image.id,
         mode: generation.mode,
         modelRoute: generation.model_route,
-        jewelryType: generation.generation_brief.jewelryType,
-        posePresetId: generation.generation_brief.posePresetId,
-        backgroundPresetId: generation.generation_brief.backgroundPresetId,
-        aspectRatio: generation.generation_brief.aspectRatio,
-        promptTemplateVersion: generation.generation_brief.promptTemplateVersion,
-      },
-    });
-    await logAnalyticsEventSafe({
-      userId,
-      name: "brief_completed",
-      properties: {
-        generationId: generation.id,
-        imageId: image.id,
-        mode: generation.mode,
         jewelryType: generation.generation_brief.jewelryType,
         posePresetId: generation.generation_brief.posePresetId,
         backgroundPresetId: generation.generation_brief.backgroundPresetId,
@@ -98,13 +92,7 @@ export async function POST(request: Request) {
       imageId: image.id,
       mode: generation.mode,
       modelRoute,
-      brief: {
-        jewelryType: generation.generation_brief.jewelryType,
-        posePresetId: generation.generation_brief.posePresetId,
-        backgroundPresetId: generation.generation_brief.backgroundPresetId,
-        aspectRatio: generation.generation_brief.aspectRatio,
-      },
-      creditsRemaining: credits - 1,
+      creditsRemaining: deducted.credits,
     });
 
     return NextResponse.json(response, { status: 201 });

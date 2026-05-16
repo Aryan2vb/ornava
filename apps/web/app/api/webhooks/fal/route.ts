@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import {
   getGenerationByProviderJobId,
+  incrementBatchCompleted,
+  incrementBatchFailed,
   markGenerationCompletedFromWebhook,
   markGenerationFailedFromWebhook,
 } from "@/lib/db";
@@ -83,11 +85,12 @@ export async function POST(request: Request) {
   // Handle error status from Fal
   if (body.status === "ERROR") {
     const errorMsg = body.error ?? body.payload?.error ?? "Provider reported error";
-    await markGenerationFailedFromWebhook({
+    const failed = await markGenerationFailedFromWebhook({
       generationId: generation.id,
       failureCode: "provider_unavailable",
       failureMessageSafe: "Image generation failed. Please retry.",
     });
+    if (failed && generation.batch_id) await incrementBatchFailed(generation.batch_id);
     await logAnalyticsEventSafe({
       userId: generation.user_id,
       name: "generation_failed",
@@ -108,11 +111,12 @@ export async function POST(request: Request) {
     body.payload?.images?.[0]?.url ?? body.payload?.image?.url;
 
   if (!outputUrl) {
-    await markGenerationFailedFromWebhook({
+    const failed = await markGenerationFailedFromWebhook({
       generationId: generation.id,
       failureCode: "unknown",
       failureMessageSafe: "Image generation completed but output was empty.",
     });
+    if (failed && generation.batch_id) await incrementBatchFailed(generation.batch_id);
     return NextResponse.json({ ok: true, status: "failed_no_output" });
   }
 
@@ -138,7 +142,7 @@ export async function POST(request: Request) {
     const startedAt = generation.started_at ? new Date(generation.started_at).getTime() : Date.now();
     const durationMs = Date.now() - startedAt;
 
-    await markGenerationCompletedFromWebhook({
+    const completed = await markGenerationCompletedFromWebhook({
       generationId: generation.id,
       outputObjectKey: objectKey,
       generationDurationMs: durationMs,
@@ -148,6 +152,8 @@ export async function POST(request: Request) {
         falOutputUrl: outputUrl,
       },
     });
+
+    if (completed && generation.batch_id) await incrementBatchCompleted(generation.batch_id);
 
     await logAnalyticsEventSafe({
       userId: generation.user_id,
@@ -167,11 +173,13 @@ export async function POST(request: Request) {
     const message = error instanceof Error ? error.message : String(error);
     console.error(`[fal-webhook] failed to process ${providerJobId}:`, message);
 
-    await markGenerationFailedFromWebhook({
+    const failed = await markGenerationFailedFromWebhook({
       generationId: generation.id,
       failureCode: "storage_write_failed",
       failureMessageSafe: "Could not save generated image. Please retry.",
     });
+
+    if (failed && generation.batch_id) await incrementBatchFailed(generation.batch_id);
 
     return NextResponse.json(
       { ok: true, status: "failed", error: "storage_write_failed" },

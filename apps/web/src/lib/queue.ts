@@ -32,6 +32,7 @@ export function getGenerationQueue() {
 export async function enqueueGenerationJob(data: GenerationJobData) {
   return getGenerationQueue().add("generate-image", data, {
     jobId: buildGenerationJobId(data.generationId),
+    priority: data.batchId ? 5 : 1,
     attempts: 1,
     removeOnComplete: {
       age: 60 * 60 * 24,

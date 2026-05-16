@@ -10,6 +10,7 @@ const uploadInitSchema = z.object({
   }),
   width: z.number().int().positive().optional(),
   height: z.number().int().positive().optional(),
+  batchId: z.string().uuid().optional(),
 });
 
 export type ValidatedUploadInitRequest = z.infer<typeof uploadInitSchema>;

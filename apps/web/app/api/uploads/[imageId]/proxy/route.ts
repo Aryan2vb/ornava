@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { z, ZodError } from "zod";
 import {
   getCreatedImageForUser,
+  getPool,
   markImageUploaded,
 } from "@/lib/db";
 import { logAnalyticsEventSafe } from "@/lib/events";
@@ -74,6 +75,17 @@ export async function POST(request: Request, { params }: RouteParams) {
 
     if (!uploadedImage) {
       return NextResponse.json({ error: "image_not_found" }, { status: 404 });
+    }
+    const batchCheck = await getPool().query<{ batch_id: string | null }>(
+      `SELECT batch_id FROM images WHERE id = $1`,
+      [uploadedImage.id],
+    );
+    const batchId = batchCheck.rows[0]?.batch_id;
+    if (batchId) {
+      await getPool().query(
+        `UPDATE batches SET image_count = image_count + 1 WHERE id = $1`,
+        [batchId],
+      );
     }
     await logAnalyticsEventSafe({
       userId,

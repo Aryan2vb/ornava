@@ -17,7 +17,7 @@ import {
   getPoseTemplatePreview,
 } from "@ornava/shared";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { Icon } from "./Icon";
 
 const jewelryLabels: Record<JewelryType, string> = {
@@ -128,18 +128,35 @@ export function BriefPanel() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const imageId = searchParams?.get("imageId") ?? null;
+  const batchId = searchParams?.get("batchId") ?? null;
   const [step, setStep] = useState<BriefStep>("type");
   const [brief, setBrief] = useState<GenerationBrief>(() =>
     getDefaultGenerationBrief("necklace"),
   );
   const [state, setState] = useState<BriefState>({ status: "idle" });
   const [isPending, startTransition] = useTransition();
+  const [batchImageCount, setBatchImageCount] = useState(0);
+  const [credits, setCredits] = useState<number | null>(null);
   const poseOptions = useMemo(
     () => getPosePresetsForJewelryType(brief.jewelryType),
     [brief.jewelryType],
   );
   const selectedPose = getPosePreset(brief.posePresetId);
   const isBusy = state.status === "creating" || isPending;
+
+  // Fetch batch image count and credits for batch mode
+  useEffect(() => {
+    if (batchId) {
+      fetch(`/api/batches/${batchId}`).then((r) => r.json()).then((data) => {
+        const uploaded = data.images?.filter((i: { uploadStatus: string }) => i.uploadStatus === "uploaded").length ?? 0;
+        setBatchImageCount(uploaded);
+      }).catch(() => {});
+    }
+    fetch("/api/profile").then((r) => r.json()).then((d) => setCredits(d.credits ?? 0)).catch(() => {});
+  }, [batchId]);
+
+  const imageCount = batchId ? batchImageCount : 1;
+  const hasInsufficientCredits = credits !== null && credits < imageCount;
 
   function selectJewelryType(jewelryType: JewelryType) {
     setBrief(getDefaultGenerationBrief(jewelryType));
@@ -167,28 +184,35 @@ export function BriefPanel() {
   }
 
   async function createGeneration() {
-    if (!imageId) {
-      setState({ status: "failed", message: "Upload an image first." });
-      return;
-    }
-
     try {
       setState({ status: "creating" });
 
-      const request: CreateGenerationRequest = {
-        imageId,
-        mode: brief.generationMode,
-        generationBrief: brief,
-        clientRequestId: clientRequestId(),
-      };
-      const response = await postJson<CreateGenerationResponse>(
-        "/api/generations",
-        request,
-      );
-
-      router.replace(
-        `/generating?imageId=${imageId}&generationId=${response.generationId}`,
-      );
+      if (batchId) {
+        // Batch generation
+        const response = await postJson<{ batchId: string }>(`/api/batches/${batchId}/generate`, {
+          mode: brief.generationMode,
+          generationBrief: brief,
+          clientRequestId: clientRequestId(),
+        });
+        router.replace(`/batch?batchId=${response.batchId}` as import("next").Route);
+      } else if (imageId) {
+        // Single image generation (existing flow)
+        const request: CreateGenerationRequest = {
+          imageId,
+          mode: brief.generationMode,
+          generationBrief: brief,
+          clientRequestId: clientRequestId(),
+        };
+        const response = await postJson<CreateGenerationResponse>(
+          "/api/generations",
+          request,
+        );
+        router.replace(
+          `/generating?imageId=${imageId}&generationId=${response.generationId}`,
+        );
+      } else {
+        setState({ status: "failed", message: "No image selected." });
+      }
     } catch (error) {
       setState({
         status: "failed",
@@ -211,6 +235,9 @@ export function BriefPanel() {
               ? "Look choose karo"
               : "Background & finish"}
         </h1>
+        {batchId && batchImageCount > 0 ? (
+          <p className="copy">Settings for {batchImageCount} image{batchImageCount > 1 ? "s" : ""}</p>
+        ) : null}
       </div>
 
       <div className="brief-progress" aria-label="Brief progress">
@@ -377,6 +404,14 @@ export function BriefPanel() {
             <p className="status-text error">{state.message}</p>
           ) : null}
 
+          {/* Credit warning for batch */}
+          {batchId && hasInsufficientCredits && credits !== null ? (
+            <div className="up-error" style={{ background: "#fff8e1", borderColor: "#f9a825", color: "#5d4037" }}>
+              <Icon name="diamond" size={15} />
+              <span>You have {credits} credit{credits !== 1 ? "s" : ""}. Only {credits} of {imageCount} images will generate.</span>
+            </div>
+          ) : null}
+
           <div className="button-row">
             <button
               className="button secondary"
@@ -389,7 +424,7 @@ export function BriefPanel() {
             </button>
             <button
               className="button"
-              disabled={!imageId || isBusy}
+              disabled={(!imageId && !batchId) || isBusy}
               type="button"
               onClick={() => {
                 startTransition(() => {
@@ -402,7 +437,9 @@ export function BriefPanel() {
               ) : (
                 <Icon name="spark" size={17} />
               )}
-              Generate
+              {batchId
+                ? `Generate ${hasInsufficientCredits ? credits : imageCount} image${(hasInsufficientCredits ? credits! : imageCount) > 1 ? "s" : ""}`
+                : "Generate"}
             </button>
           </div>
         </>

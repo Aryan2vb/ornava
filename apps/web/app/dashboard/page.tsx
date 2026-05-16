@@ -17,13 +17,23 @@ type Generation = {
   created_at: string;
 };
 
+type ActiveBatch = {
+  batchId: string;
+  status: string;
+  imageCount: number;
+  completedCount: number;
+  generatedCount: number;
+};
+
 export default function DashboardPage() {
   const [generations, setGenerations] = useState<Generation[]>([]);
   const [credits, setCredits] = useState<number | null>(null);
+  const [activeBatch, setActiveBatch] = useState<ActiveBatch | null>(null);
 
   useEffect(() => {
     fetch("/api/generations/history").then((r) => r.json()).then((d) => setGenerations(d.generations ?? []));
     fetch("/api/profile").then((r) => r.json()).then((d) => setCredits(d.credits ?? 0));
+    fetch("/api/batches/active").then((r) => r.json()).then((d) => { if (d.batch) setActiveBatch(d.batch); }).catch(() => {});
   }, []);
 
   return (
@@ -48,6 +58,34 @@ export default function DashboardPage() {
               </Link>
             </div>
           </div>
+
+          {/* Active batch resume card */}
+          {activeBatch && (
+            <Link
+              href={(
+                activeBatch.status === "generating"
+                  ? `/batch?batchId=${activeBatch.batchId}`
+                  : `/upload`
+              ) as import("next").Route}
+              className="dash-card"
+              style={{ background: "#fff8e1", border: "1px solid #f9a825" }}
+            >
+              <div className="dash-card-thumb">
+                <Icon name="image" size={24} />
+              </div>
+              <div className="dash-card-info">
+                <span className="dash-card-title">
+                  {activeBatch.status === "generating"
+                    ? `Batch generating (${activeBatch.completedCount}/${activeBatch.generatedCount})`
+                    : `${activeBatch.imageCount} images ready`}
+                </span>
+                <span className="dash-card-meta">
+                  {activeBatch.status === "generating" ? "Tap to review progress" : "Tap to review, remove, or add"}
+                </span>
+              </div>
+              <span className="status-pill">Resume</span>
+            </Link>
+          )}
 
           {/* Create CTA — shown when no generations */}
           {generations.length === 0 && (

@@ -2,12 +2,14 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { CachedImage } from "./CachedImage";
 import { Icon } from "./Icon";
 
 type Generation = {
   id: string;
   status: string;
   generation_brief: { jewelryType?: string };
+  output_object_key: string | null;
   created_at: string;
 };
 
@@ -42,9 +44,23 @@ export function GalleryPanel() {
         <div className="gallery-panel-grid">
           {items.map((g) => (
             <Link key={g.id} href={`/result?generationId=${g.id}`} className="gallery-panel-item">
-              <Icon name="image" size={20} />
-              <span>{g.generation_brief?.jewelryType?.replace("_", " ") ?? "item"}</span>
-              <span style={{ fontSize: 10, opacity: 0.6 }}>{timeAgo(g.created_at)}</span>
+              <span className="gallery-panel-thumb">
+                {g.output_object_key ? (
+                  <CachedImage
+                    alt=""
+                    cacheVersion={g.output_object_key}
+                    fallback={<Icon name="image" size={18} />}
+                    loading="lazy"
+                    src={`/api/generations/${g.id}/preview`}
+                  />
+                ) : (
+                  <Icon name="image" size={18} />
+                )}
+              </span>
+              <span className="gallery-panel-copy">
+                <span>{g.generation_brief?.jewelryType?.replace("_", " ") ?? "item"}</span>
+                <span>{timeAgo(g.created_at)}</span>
+              </span>
             </Link>
           ))}
         </div>

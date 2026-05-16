@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
+import { putDeviceCacheBlob } from "@/lib/device-cache";
+import { CachedImage } from "./CachedImage";
 import { Icon } from "./Icon";
 
 type LogoPosition = "top-left" | "top-right" | "bottom-left" | "bottom-right" | "bottom-center";
@@ -8,7 +10,7 @@ type LogoPosition = "top-left" | "top-right" | "bottom-left" | "bottom-right" | 
 type LogoState =
   | { status: "loading" }
   | { status: "empty" }
-  | { status: "ready"; logoUrl: string; position: LogoPosition; sizePercent: number; enabled: boolean };
+  | { status: "ready"; logoUrl: string; logoCacheVersion?: string | null; position: LogoPosition; sizePercent: number; enabled: boolean };
 
 const POSITIONS: { id: LogoPosition; label: string }[] = [
   { id: "top-left", label: "↖" },
@@ -57,7 +59,14 @@ export function LogoSettings() {
       .then((r) => r.json())
       .then((data) => {
         if (data.hasLogo) {
-          setState({ status: "ready", logoUrl: data.logoUrl, position: data.position, sizePercent: data.sizePercent, enabled: data.enabled });
+          setState({
+            status: "ready",
+            logoUrl: data.logoUrl,
+            logoCacheVersion: data.logoCacheVersion,
+            position: data.position,
+            sizePercent: data.sizePercent,
+            enabled: data.enabled,
+          });
           setLocalLogoUrl(data.logoUrl);
         } else {
           setState({ status: "empty" });
@@ -81,13 +90,25 @@ export function LogoSettings() {
         body: JSON.stringify({ fileSizeBytes: file.size, width: dims.width, height: dims.height }),
       });
       if (!res.ok) throw new Error("Failed to get upload URL");
-      const { uploadUrl } = await res.json();
+      const { uploadUrl, logoCacheVersion } = await res.json();
 
       await fetch(uploadUrl, { method: "PUT", headers: { "content-type": "image/png" }, body: file });
+      await putDeviceCacheBlob({
+        sourceUrl: "/api/profile/logo/image",
+        blob: file,
+        cacheVersion: logoCacheVersion,
+      });
 
       const previewUrl = URL.createObjectURL(file);
       setLocalLogoUrl(previewUrl);
-      setState({ status: "ready", logoUrl: previewUrl, position: "bottom-right", sizePercent: 12, enabled: true });
+      setState({
+        status: "ready",
+        logoUrl: previewUrl,
+        logoCacheVersion,
+        position: "bottom-right",
+        sizePercent: 12,
+        enabled: true,
+      });
     } catch {
       setError("Upload failed. Try again.");
     }
@@ -130,11 +151,21 @@ export function LogoSettings() {
       {state.status === "ready" && localLogoUrl && (
         <div style={{ position: "relative", borderRadius: "8px", overflow: "hidden", aspectRatio: "4/3", background: "#f0f0f0" }}>
           <img src={SAMPLE_IMAGE} alt="Sample" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-          <img
+          {localLogoUrl.startsWith("blob:") ? (
+            <img
+              src={localLogoUrl}
+              alt="Your logo"
+              style={logoPositionStyle(state.position, state.sizePercent)}
+            />
+          ) : (
+          <CachedImage
+            cacheVersion={state.logoCacheVersion}
             src={localLogoUrl}
             alt="Your logo"
+            loadWhenVisible={false}
             style={logoPositionStyle(state.position, state.sizePercent)}
           />
+          )}
         </div>
       )}
 
