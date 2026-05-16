@@ -3309,6 +3309,11 @@ button {
 
 .overlay-weight-wrap .input {
   padding-right: 36px;
+  min-height: 36px;
+}
+
+.overlay-field .select {
+  min-height: 36px;
 }
 
 .overlay-weight-unit {
