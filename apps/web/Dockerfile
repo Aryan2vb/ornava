@@ -26,6 +26,7 @@ FROM node:22-alpine AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
+RUN apk add --no-cache fontconfig ttf-dejavu ttf-liberation font-noto
 RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 nextjs
 
 COPY --from=base /app/apps/web/.next/standalone ./
