@@ -447,6 +447,7 @@ export async function getCompletedGenerationResultForUser(input: {
         g.provider_model_id,
         g.provider_job_id,
         g.generation_duration_ms,
+        g.overlay_text,
         i.original_object_key,
         g.output_object_key
       from generations g
@@ -652,14 +653,6 @@ export function toGenerationStatusResponse(
     imageId: generation.image_id,
     mode: generation.mode,
     status: generation.status,
-    modelRoute: generation.model_route,
-    generationBrief: normalizeGenerationBrief(
-      generation.generation_brief,
-      generation.mode,
-    ),
-    provider: generation.provider ?? undefined,
-    providerModelId: generation.provider_model_id ?? undefined,
-    outputUrl: generation.output_object_key ?? undefined,
     failureCode: generation.failure_code ?? undefined,
     failureMessage: generation.failure_message_safe ?? undefined,
     generationDurationMs: generation.generation_duration_ms ?? undefined,

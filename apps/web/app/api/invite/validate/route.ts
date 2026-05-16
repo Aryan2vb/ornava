@@ -1,17 +1,25 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
-import { grantCredits, linkInviteCodeToUser, validateAndClaimInviteCode } from "@/lib/db";
+import { grantCredits, linkInviteCodeToUser, upsertUserFromOAuthProfile, validateAndClaimInviteCode } from "@/lib/db";
 import { encode, getToken } from "next-auth/jwt";
 import { getRequiredAuthSecret } from "@/lib/env";
 
 export async function POST(request: NextRequest) {
   const session = await getServerSession(authOptions);
   const userId = session?.user?.id;
+  const email = session?.user?.email;
 
-  if (!userId) {
+  if (!userId || !email) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
+
+  // Ensure user row exists (handles stale JWT after DB reset)
+  await upsertUserFromOAuthProfile({
+    email,
+    name: session.user?.name,
+    image: session.user?.image,
+  });
 
   const body = await request.json();
   const code = body?.code?.trim();

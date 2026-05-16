@@ -41,7 +41,6 @@ export type CreateGenerationRequest = {
 export type CreateGenerationResponse = {
   generationId: string;
   status: Extract<GenerationStatus, "queued" | "processing">;
-  modelRoute: string;
 };
 
 export type GenerationStatusResponse = {
@@ -49,11 +48,6 @@ export type GenerationStatusResponse = {
   imageId: string;
   mode: GenerationMode;
   status: GenerationStatus;
-  modelRoute: string;
-  generationBrief: GenerationBrief;
-  provider?: string;
-  providerModelId?: string;
-  outputUrl?: string;
   failureCode?: string;
   failureMessage?: string;
   generationDurationMs?: number;
@@ -65,21 +59,15 @@ export type GenerationResultResponse = {
   imageId: string;
   mode: GenerationMode;
   status: Extract<GenerationStatus, "completed">;
-  modelRoute: string;
-  generationBrief: GenerationBrief;
-  provider?: string;
-  providerModelId?: string;
-  providerJobId?: string;
   generationDurationMs?: number;
+  overlayText?: { purity: string; weightGm: string; position: string } | null;
   assets: {
     original: {
       url: string;
-      objectKey: string;
       expiresAt: string;
     };
     generated: {
       url: string;
-      objectKey: string;
       expiresAt: string;
     };
   };

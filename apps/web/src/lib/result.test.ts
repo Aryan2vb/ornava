@@ -25,6 +25,7 @@ const completedRow: GenerationResultRow = {
   provider_model_id: "openai/gpt-image-2/edit",
   provider_job_id: "019e1259-be1e-7e61-8cf8-71c9029fdf80",
   generation_duration_ms: 172_853,
+  overlay_text: null,
   original_object_key:
     "users/user-1/originals/image-1/kundan-ring.jpg",
   output_object_key:
@@ -47,9 +48,16 @@ test("toGenerationResultResponse maps a completed generation to signed assets", 
 
   assert.equal(response.generationId, completedRow.id);
   assert.equal(response.status, "completed");
+  assert.equal(response.mode, "on_model");
+  assert.equal(response.generationDurationMs, 172_853);
   assert.equal(response.assets.original.url, "https://r2.example.com/original");
   assert.equal(response.assets.generated.url, "https://r2.example.com/generated");
-  assert.equal(response.assets.generated.objectKey, completedRow.output_object_key);
-  assert.equal(response.providerJobId, completedRow.provider_job_id);
-  assert.equal(response.generationBrief.posePresetId, "ring_on_finger");
+  assert.equal(response.assets.generated.expiresAt, "2026-05-10T15:30:00.000Z");
+  // Sensitive fields must NOT be exposed to the client
+  assert.equal("provider" in response, false);
+  assert.equal("providerModelId" in response, false);
+  assert.equal("providerJobId" in response, false);
+  assert.equal("modelRoute" in response, false);
+  assert.equal("generationBrief" in response, false);
+  assert.equal("objectKey" in response.assets.generated, false);
 });

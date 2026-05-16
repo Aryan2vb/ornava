@@ -12,6 +12,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import type { CSSProperties } from "react";
 import { useEffect, useState, useTransition } from "react";
 import { Icon } from "./Icon";
+import { OverlayTextPanel } from "./OverlayTextPanel";
 import {
   feedbackReasonLabels,
 } from "@/lib/feedback";
@@ -73,6 +74,15 @@ export function ResultView() {
   const [isSharing, startSharing] = useTransition();
   const [isSubmittingFeedback, startFeedbackSubmission] = useTransition();
   const [isRetrying, startRetry] = useTransition();
+  const [showLogoNudge, setShowLogoNudge] = useState(false);
+
+  // Check if user has logo configured
+  useEffect(() => {
+    fetch("/api/profile/logo")
+      .then((r) => r.json())
+      .then((data) => { if (!data.hasLogo) setShowLogoNudge(true); })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (!generationId) {
@@ -300,7 +310,7 @@ export function ResultView() {
             <img
               alt="Generated jewelry catalog output"
               className="compare-img compare-img--generated"
-              src={result.assets.generated.url}
+              src={downloadUrl}
             />
             <div
               className="compare-img-clip"
@@ -431,6 +441,33 @@ export function ResultView() {
           ) : null}
         </div>
 
+        {/* Weight & Purity overlay */}
+        <OverlayTextPanel
+          generationId={result.generationId}
+          imageUrl={downloadUrl}
+          initialOverlay={result.overlayText}
+        />
+
+        {/* Logo nudge for users without logo */}
+        {showLogoNudge && (
+          <div className="result-feedback-card" style={{ background: "linear-gradient(135deg, #FFF8E1, #FFF3CD)", border: "1px solid #B8860B33" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div>
+                <strong style={{ fontSize: "14px" }}>🏷️ Add your shop logo</strong>
+                <p className="copy" style={{ fontSize: "12px", margin: "4px 0 0" }}>
+                  Branded images = more trust on WhatsApp
+                </p>
+              </div>
+              <div style={{ display: "flex", gap: "8px" }}>
+                <Link href="/profile" className="button gold" style={{ fontSize: "12px", padding: "6px 12px" }}>
+                  Set up →
+                </Link>
+                <button type="button" className="button secondary" style={{ fontSize: "11px", padding: "4px 8px" }} onClick={() => setShowLogoNudge(false)}>✕</button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Actions — share & download at bottom */}
         <div className="result-actions-card">
           <button
@@ -458,6 +495,25 @@ export function ResultView() {
           >
             <Icon name="download" size={18} />
             Download
+          </button>
+
+          <button
+            className="button secondary result-cta-secondary"
+            disabled={isSharing}
+            type="button"
+            onClick={() => {
+              const cleanUrl = `${downloadUrl}?clean=true`;
+              const link = document.createElement("a");
+              link.href = cleanUrl;
+              link.download = `ornava-${result.mode}-${result.generationId.slice(0, 8)}-clean.jpg`;
+              document.body.appendChild(link);
+              link.click();
+              document.body.removeChild(link);
+            }}
+            style={{ fontSize: "13px" }}
+          >
+            <Icon name="download" size={14} />
+            Download without logo
           </button>
         </div>
       </div>

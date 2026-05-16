@@ -4,6 +4,7 @@ import { useEffect, useState, useTransition } from "react";
 import { Icon } from "@/components/Icon";
 import { BottomNav } from "@/components/BottomNav";
 import { SidebarNav } from "@/components/SidebarNav";
+import { LogoSettings } from "@/components/LogoSettings";
 
 type Profile = {
   id: string;
@@ -74,6 +75,8 @@ export default function ProfilePage() {
             </div>
             <p className="copy">Each generation uses 1 credit. You received 20 free credits with your invite code.</p>
           </div>
+
+          <LogoSettings />
 
           <div className="panel">
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>

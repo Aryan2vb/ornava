@@ -84,9 +84,17 @@ export async function POST(request: Request, { params }: RouteParams) {
     const response: RetryGenerationResponse = {
       generationId: generation.id,
       status: generation.status === "processing" ? "processing" : "queued",
-      modelRoute: generation.model_route,
       previousGenerationId: previousGeneration.id,
     };
+
+    console.info("[generation:retry]", {
+      generationId: generation.id,
+      previousGenerationId: previousGeneration.id,
+      userId,
+      mode: generation.mode,
+      modelRoute,
+      previousFailureCode: previousGeneration.failure_code,
+    });
 
     return NextResponse.json(response, { status: 201 });
   } catch (error) {

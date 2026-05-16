@@ -16,6 +16,7 @@ export type GenerationResultRow = {
   provider_model_id: string | null;
   provider_job_id: string | null;
   generation_duration_ms: number | null;
+  overlay_text: { purity: string; weightGm: string; position: string } | null;
   original_object_key: string;
   output_object_key: string;
 };
@@ -37,21 +38,15 @@ export function toGenerationResultResponse(
     imageId: generation.image_id,
     mode: generation.mode,
     status: generation.status,
-    modelRoute: generation.model_route,
-    generationBrief: generation.generation_brief,
-    provider: generation.provider ?? undefined,
-    providerModelId: generation.provider_model_id ?? undefined,
-    providerJobId: generation.provider_job_id ?? undefined,
     generationDurationMs: generation.generation_duration_ms ?? undefined,
+    overlayText: generation.overlay_text ?? undefined,
     assets: {
       original: {
         url: urls.originalUrl,
-        objectKey: generation.original_object_key,
         expiresAt: urls.expiresAt,
       },
       generated: {
         url: urls.generatedUrl,
-        objectKey: generation.output_object_key,
         expiresAt: urls.expiresAt,
       },
     },
