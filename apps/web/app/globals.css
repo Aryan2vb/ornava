@@ -3227,6 +3227,11 @@ button {
   border-radius: 14px;
   background: var(--ground);
   overflow: hidden;
+  transition: border-color 0.2s ease;
+}
+
+.overlay-panel--saved {
+  border-color: var(--gold);
 }
 
 .overlay-header {
@@ -3243,10 +3248,37 @@ button {
 .overlay-header-left {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
+}
+
+.overlay-icon-badge {
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #B8860B22, #B8860B11);
+  color: var(--gold);
+}
+
+.overlay-header-text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+}
+
+.overlay-title {
   font-size: 14px;
   font-weight: 720;
   color: var(--ink);
+}
+
+.overlay-subtitle {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--gold);
 }
 
 .overlay-header-right {
@@ -3255,13 +3287,11 @@ button {
   gap: 8px;
 }
 
-.overlay-saved-pill {
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--gold);
-  background: var(--surface);
-  padding: 3px 8px;
-  border-radius: 6px;
+.overlay-status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--gold);
 }
 
 .overlay-chevron {
@@ -3277,43 +3307,42 @@ button {
   padding: 0 16px 16px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 16px;
   border-top: 1px solid var(--line);
-  padding-top: 14px;
+  padding-top: 16px;
 }
 
-.overlay-inputs {
-  display: flex;
-  gap: 10px;
-}
-
-.overlay-field {
+.overlay-section {
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 6px;
 }
 
-.overlay-field--purity {
-  flex: 0 0 90px;
+.overlay-section--grow {
+  flex: 1;
 }
 
-.overlay-field--weight {
-  flex: 0 0 100px;
+.overlay-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--muted);
 }
 
-.overlay-weight-wrap {
+.overlay-section .select {
+  min-height: 38px;
+}
+
+.overlay-weight-input {
   position: relative;
   display: flex;
   align-items: center;
 }
 
-.overlay-weight-wrap .input {
+.overlay-weight-input .input {
   padding-right: 36px;
-  min-height: 36px;
-}
-
-.overlay-field .select {
-  min-height: 36px;
+  min-height: 38px;
 }
 
 .overlay-weight-unit {
@@ -3325,16 +3354,10 @@ button {
   pointer-events: none;
 }
 
-.overlay-controls {
+.overlay-row {
   display: flex;
   gap: 16px;
   align-items: flex-end;
-}
-
-.overlay-control-group {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
 }
 
 .overlay-btn-row {
@@ -3372,4 +3395,12 @@ button {
 .overlay-action {
   display: flex;
   gap: 8px;
+}
+
+.overlay-apply-btn {
+  flex: 1;
+}
+
+.overlay-clear-btn {
+  min-width: 46px;
 }

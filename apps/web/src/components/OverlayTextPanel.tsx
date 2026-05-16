@@ -37,7 +37,7 @@ export function OverlayTextPanel({
   const [isSaving, startSaving] = useTransition();
 
   const hasText = purity && weightGm.length > 0;
-  const displayText = hasText ? `Purity: ${purity} | Weight: ${weightGm}gm` : null;
+  const displayText = hasText ? `${purity} · ${weightGm}gm` : null;
 
   function save() {
     if (!hasText) return;
@@ -60,17 +60,22 @@ export function OverlayTextPanel({
   }
 
   return (
-    <div className="overlay-panel">
+    <div className={`overlay-panel ${saved ? "overlay-panel--saved" : ""}`}>
       {/* Collapsible header */}
       <button type="button" className="overlay-header" onClick={() => setOpen(!open)}>
         <span className="overlay-header-left">
-          <Icon name="diamond" size={15} />
-          <span>Weight & Purity</span>
+          <span className="overlay-icon-badge">
+            <Icon name="diamond" size={14} />
+          </span>
+          <span className="overlay-header-text">
+            <span className="overlay-title">Weight & Purity</span>
+            {saved && displayText && (
+              <span className="overlay-subtitle">{displayText}</span>
+            )}
+          </span>
         </span>
         <span className="overlay-header-right">
-          {saved && displayText && (
-            <span className="overlay-saved-pill">{displayText}</span>
-          )}
+          {saved && <span className="overlay-status-dot" />}
           <span className={`overlay-chevron ${open ? "overlay-chevron--open" : ""}`}>
             <Icon name="arrow-left" size={12} style={{ transform: "rotate(-90deg)" }} />
           </span>
@@ -80,10 +85,10 @@ export function OverlayTextPanel({
       {/* Body */}
       {open && (
         <div className="overlay-body">
-          {/* Inputs row */}
-          <div className="overlay-inputs">
-            <div className="overlay-field overlay-field--purity">
-              <label className="field-label">Purity</label>
+          {/* Purity & Weight */}
+          <div className="overlay-row">
+            <div className="overlay-section overlay-section--grow">
+              <label className="overlay-label">Purity</label>
               <select
                 className="select"
                 value={purity}
@@ -92,14 +97,14 @@ export function OverlayTextPanel({
                 {PURITY_OPTIONS.map((p) => <option key={p} value={p}>{p}</option>)}
               </select>
             </div>
-            <div className="overlay-field overlay-field--weight">
-              <label className="field-label">Weight</label>
-              <div className="overlay-weight-wrap">
+            <div className="overlay-section overlay-section--grow">
+              <label className="overlay-label">Weight</label>
+              <div className="overlay-weight-input">
                 <input
                   className="input"
                   type="text"
                   inputMode="decimal"
-                  placeholder="30"
+                  placeholder="e.g. 4.5"
                   value={weightGm}
                   onChange={(e) => { setWeightGm(e.target.value.replace(/[^0-9.]/g, "")); setSaved(false); }}
                 />
@@ -108,10 +113,10 @@ export function OverlayTextPanel({
             </div>
           </div>
 
-          {/* Controls row */}
-          <div className="overlay-controls">
-            <div className="overlay-control-group">
-              <label className="field-label">Position</label>
+          {/* Position & Size in a compact row */}
+          <div className="overlay-row">
+            <div className="overlay-section overlay-section--grow">
+              <label className="overlay-label">Position</label>
               <div className="overlay-btn-row">
                 {POSITIONS.map((p) => (
                   <button
@@ -126,8 +131,8 @@ export function OverlayTextPanel({
                 ))}
               </div>
             </div>
-            <div className="overlay-control-group">
-              <label className="field-label">Size</label>
+            <div className="overlay-section">
+              <label className="overlay-label">Size</label>
               <div className="overlay-btn-row">
                 {SIZES.map((s) => (
                   <button
@@ -146,22 +151,20 @@ export function OverlayTextPanel({
           {/* Action */}
           <div className="overlay-action">
             <button
-              className="button gold"
+              className="button gold overlay-apply-btn"
               type="button"
               disabled={!hasText || isSaving || saved}
               onClick={save}
-              style={{ flex: 1 }}
             >
               {isSaving ? "Saving..." : saved ? "✓ Applied" : "Apply to image"}
             </button>
             {saved && (
               <button
-                className="button secondary"
+                className="button secondary overlay-clear-btn"
                 type="button"
                 onClick={clear}
                 disabled={isSaving}
                 aria-label="Clear overlay"
-                style={{ minWidth: "46px" }}
               >
                 <Icon name="x" size={14} />
               </button>
