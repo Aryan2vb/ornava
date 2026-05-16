@@ -21,6 +21,7 @@ type IconName =
   | "spark"
   | "upload"
   | "user"
+  | "whatsapp"
   | "x";
 
 type IconProps = {
@@ -31,16 +32,17 @@ type IconProps = {
 };
 
 export function Icon({ name, size = 18, className, style }: IconProps) {
+  const isFilled = name === "whatsapp";
   return (
     <svg
       aria-hidden="true"
       className={className}
-      fill="none"
+      fill={isFilled ? "currentColor" : "none"}
       height={size}
-      stroke="currentColor"
+      stroke={isFilled ? "none" : "currentColor"}
       strokeLinecap="round"
       strokeLinejoin="round"
-      strokeWidth="2.1"
+      strokeWidth={isFilled ? undefined : "2.1"}
       style={style}
       viewBox="0 0 24 24"
       width={size}
@@ -153,4 +155,5 @@ const paths: Record<IconName, React.ReactNode> = {
     </>
   ),
   x: <path d="M18 6 6 18M6 6l12 12" />,
+  whatsapp: <path d="M17.5 14.4l-2-1c-.3-.1-.5-.1-.7.2l-.9 1.1c-.2.2-.3.2-.6.1-1.7-.9-2.8-1.9-3.7-3.3-.2-.3-.1-.5.1-.7l.6-.6c.2-.2.2-.3.3-.5s0-.4-.1-.5l-1-2.3c-.2-.6-.5-.5-.7-.5h-.6c-.2 0-.6.1-.9.4-.3.4-1.2 1.2-1.2 2.8s1.2 3.3 1.4 3.5c.2.2 2.4 3.6 5.8 5 .8.4 1.5.6 2 .7.8.3 1.6.2 2.2.1.7-.1 2-.8 2.3-1.6.3-.8.3-1.4.2-1.6-.1-.1-.3-.2-.6-.4zM12 2C6.5 2 2 6.5 2 12c0 1.8.5 3.4 1.3 4.8L2 22l5.3-1.4C8.7 21.5 10.3 22 12 22c5.5 0 10-4.5 10-10S17.5 2 12 2z" />,
 };

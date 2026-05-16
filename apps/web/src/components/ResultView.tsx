@@ -242,11 +242,10 @@ export function ResultView() {
         request,
       )
         .then(() => {
-          setFeedbackMessage(
-            request.rating === "usable"
-              ? "Marked usable."
-              : "Feedback saved. You can retry this image.",
-          );
+          if (request.rating === "not_usable") {
+            // Auto-retry after submitting negative feedback
+            retryGeneration();
+          }
         })
         .catch((error) => {
           setFeedbackError(
@@ -349,119 +348,117 @@ export function ResultView() {
       </div>
 
       <div className="result-col-right">
-        <button
-          className="button whatsapp"
-          disabled={isSharing}
-          type="button"
-          onClick={shareResult}
-          style={{ width: "100%", minHeight: 52, fontSize: 16 }}
-        >
-          {isSharing ? (
-            <span className="spinner" aria-hidden="true" />
-          ) : (
-            <Icon name="phone" size={20} />
-          )}
-          {isSharing ? "Opening..." : "WhatsApp pe bhejo"}
-        </button>
+        {/* Feedback — Zomato-style emoji rating */}
+        <div className="result-feedback-card">
+          {!feedbackMessage ? (
+            <>
+              <span className="feedback-question">Result kaisa laga?</span>
+              <div className="feedback-emojis">
+                <button
+                  aria-label="Not good"
+                  className="feedback-emoji"
+                  disabled={isSubmittingFeedback}
+                  type="button"
+                  onClick={() => setFeedbackMessage("not_usable")}
+                >
+                  <span className="feedback-emoji-icon">😕</span>
+                  <span className="feedback-emoji-label">Nahi</span>
+                </button>
+                <button
+                  aria-label="Okay"
+                  className="feedback-emoji"
+                  disabled={isSubmittingFeedback}
+                  type="button"
+                  onClick={() => {
+                    submitFeedback({ rating: "usable" });
+                    setFeedbackMessage("usable");
+                  }}
+                >
+                  <span className="feedback-emoji-icon">🙂</span>
+                  <span className="feedback-emoji-label">Theek hai</span>
+                </button>
+                <button
+                  aria-label="Love it"
+                  className="feedback-emoji"
+                  disabled={isSubmittingFeedback}
+                  type="button"
+                  onClick={() => {
+                    submitFeedback({ rating: "usable" });
+                    setFeedbackMessage("usable");
+                  }}
+                >
+                  <span className="feedback-emoji-icon">😍</span>
+                  <span className="feedback-emoji-label">Zabardast</span>
+                </button>
+              </div>
+            </>
+          ) : feedbackMessage === "usable" ? (
+            <div className="feedback-success-state">
+              <span className="feedback-success-sparkle">✨</span>
+              <span className="feedback-success-text">Shukriya! Ab share karo.</span>
+            </div>
+          ) : feedbackMessage === "not_usable" ? (
+            <div className="feedback-expand">
+              <span className="feedback-question">Kya theek nahi laga?</span>
+              <div className="feedback-chips">
+                {feedbackReasonOptions.map(([reason, label]) => (
+                  <button
+                    className={`feedback-chip ${selectedReason === reason ? "feedback-chip--selected" : ""}`}
+                    key={reason}
+                    type="button"
+                    onClick={() => setSelectedReason(reason)}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <button
+                className="button result-cta-retry"
+                disabled={isSubmittingFeedback || isRetrying}
+                type="button"
+                onClick={() =>
+                  submitFeedback({ rating: "not_usable", reason: selectedReason })
+                }
+              >
+                <Icon name="refresh" size={16} />
+                {isSubmittingFeedback || isRetrying ? "Retrying..." : "Dobara try karo"}
+              </button>
+            </div>
+          ) : null}
 
-        <div className="button-row">
+          {feedbackError ? (
+            <p className="status-text error">{feedbackError}</p>
+          ) : null}
+        </div>
+
+        {/* Actions — share & download at bottom */}
+        <div className="result-actions-card">
           <button
-            className="button secondary"
+            className="button whatsapp result-cta-primary"
+            disabled={isSharing}
+            type="button"
+            onClick={shareResult}
+          >
+            {isSharing ? (
+              <span className="spinner" aria-hidden="true" />
+            ) : (
+              <img alt="" className="wa-logo" height={26} src="/icons/whatsapp.svg" width={26} />
+            )}
+            <span className="result-cta-content">
+              <span className="result-cta-label">{isSharing ? "Opening..." : "WhatsApp pe bhejo"}</span>
+              <span className="result-cta-hint">Customer ko seedha share karo</span>
+            </span>
+          </button>
+
+          <button
+            className="button gold result-cta-secondary"
             disabled={isSharing}
             type="button"
             onClick={downloadResult}
           >
-            <Icon name="download" size={17} />
-            Save
+            <Icon name="download" size={18} />
+            Download
           </button>
-          <button
-            className="button secondary"
-            disabled={isRetrying}
-            type="button"
-            onClick={retryGeneration}
-          >
-            {isRetrying ? (
-              <span className="spinner" aria-hidden="true" />
-            ) : (
-              <Icon name="refresh" size={16} />
-            )}
-            Retry
-          </button>
-        </div>
-
-        <div className="soft-panel">
-          <div className="screen-header-row">
-            <strong style={{ fontSize: 16, lineHeight: "21px" }}>
-              Good enough to send?
-            </strong>
-            <span className="copy" style={{ fontSize: 12 }}>
-              Beta feedback
-            </span>
-          </div>
-          <div className="button-row">
-            <button
-              className="button"
-              disabled={isSubmittingFeedback}
-              type="button"
-              onClick={() => submitFeedback({ rating: "usable" })}
-            >
-              {isSubmittingFeedback ? (
-                <span className="spinner" aria-hidden="true" />
-              ) : (
-                <Icon name="check" size={16} />
-              )}
-              {isSubmittingFeedback ? "Saving..." : "Usable"}
-            </button>
-            <button
-              className="button secondary"
-              disabled={isSubmittingFeedback}
-              type="button"
-              onClick={() =>
-                submitFeedback({
-                  rating: "not_usable",
-                  reason: selectedReason,
-                })
-              }
-            >
-              Not usable
-            </button>
-          </div>
-          <label className="field-label" htmlFor="feedback-reason">
-            Reason if not usable
-          </label>
-          <select
-            className="select"
-            id="feedback-reason"
-            value={selectedReason}
-            onChange={(event) =>
-              setSelectedReason(event.target.value as FeedbackReason)
-            }
-          >
-            {feedbackReasonOptions.map(([reason, label]) => (
-              <option key={reason} value={reason}>
-                {label}
-              </option>
-            ))}
-          </select>
-          <button
-            className="button secondary"
-            disabled={isSubmittingFeedback}
-            type="button"
-            onClick={() =>
-              submitFeedback({
-                rating: "not_usable",
-                reason: selectedReason,
-              })
-            }
-          >
-            Save not-usable feedback
-          </button>
-          {feedbackMessage ? (
-            <p className="status-text">{feedbackMessage}</p>
-          ) : null}
-          {feedbackError ? (
-            <p className="status-text error">{feedbackError}</p>
-          ) : null}
         </div>
       </div>
     </div>
