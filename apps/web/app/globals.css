@@ -3298,7 +3298,7 @@ button {
 }
 
 .overlay-field--weight {
-  flex: 1;
+  flex: 0 0 100px;
 }
 
 .overlay-weight-wrap {
