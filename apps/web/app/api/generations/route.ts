@@ -90,8 +90,22 @@ export async function POST(request: Request) {
     const response: CreateGenerationResponse = {
       generationId: generation.id,
       status: generation.status === "processing" ? "processing" : "queued",
-      modelRoute: generation.model_route,
     };
+
+    console.info("[generation:create]", {
+      generationId: generation.id,
+      userId,
+      imageId: image.id,
+      mode: generation.mode,
+      modelRoute,
+      brief: {
+        jewelryType: generation.generation_brief.jewelryType,
+        posePresetId: generation.generation_brief.posePresetId,
+        backgroundPresetId: generation.generation_brief.backgroundPresetId,
+        aspectRatio: generation.generation_brief.aspectRatio,
+      },
+      creditsRemaining: credits - 1,
+    });
 
     return NextResponse.json(response, { status: 201 });
   } catch (error) {

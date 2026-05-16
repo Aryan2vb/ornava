@@ -38,5 +38,17 @@ export async function GET(_request: Request, { params }: RouteParams) {
     return NextResponse.json({ error: "generation_not_found" }, { status: 404 });
   }
 
+  console.info("[generation:status]", {
+    generationId: generation.id,
+    userId,
+    status: generation.status,
+    mode: generation.mode,
+    modelRoute: generation.model_route,
+    provider: generation.provider,
+    providerModelId: generation.provider_model_id,
+    durationMs: generation.generation_duration_ms,
+    failureCode: generation.failure_code,
+  });
+
   return NextResponse.json(toGenerationStatusResponse(generation));
 }

@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import sharp, { type OverlayOptions } from "sharp";
 import { getCompletedGenerationResultForUser } from "@/lib/db";
 import { env } from "@/lib/env";
 import { createObjectReadUrl } from "@/lib/storage";
 import { getRequiredUserId } from "@/lib/session";
+import { getUserLogoSettings, fetchLogoBuffer, computeLogoPosition, createTextPillSvg, type OverlayText } from "@/lib/logo";
 
-// Runs on Node runtime — needs fetch() to R2 (Edge would work too but keep consistent)
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
@@ -14,31 +15,16 @@ const paramsSchema = z.object({
 });
 
 type RouteParams = {
-  params: Promise<{
-    generationId: string;
-  }>;
+  params: Promise<{ generationId: string }>;
 };
 
-/**
- * Same-origin download proxy for generated images.
- *
- * Why: Direct R2 signed URLs are cross-origin from our app domain. Browser
- * fetch() to them gets blocked by CORS unless R2 is configured to allow our
- * origin (which requires bucket-level CORS config). Proxying through our
- * own API makes the URL same-origin, which:
- *   1. Lets the Web Share API attach the file directly to WhatsApp
- *   2. Gives us a clean filename via Content-Disposition
- *   3. Keeps R2 credentials out of the browser
- */
 export async function GET(_request: Request, { params }: RouteParams) {
   const userId = await getRequiredUserId();
-
   if (!userId) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
   const parsedParams = paramsSchema.safeParse(await params);
-
   if (!parsedParams.success) {
     return NextResponse.json({ error: "invalid_generation" }, { status: 400 });
   }
@@ -52,25 +38,86 @@ export async function GET(_request: Request, { params }: RouteParams) {
     return NextResponse.json({ error: "result_not_found" }, { status: 404 });
   }
 
-  // Get a short-lived signed URL from R2 and fetch the bytes server-side
   const signed = await createObjectReadUrl({
     bucket: env.R2_GENERATED_BUCKET,
     objectKey: generation.output_object_key,
   });
 
   const r2Response = await fetch(signed.url);
-
   if (!r2Response.ok) {
-    return NextResponse.json(
-      { error: "r2_read_failed", status: r2Response.status },
-      { status: 502 },
-    );
+    return NextResponse.json({ error: "r2_read_failed" }, { status: 502 });
   }
 
-  // Stream the bytes back to the client with a friendly filename
+  const imageBytes = new Uint8Array(await r2Response.arrayBuffer());
+  const url = new URL(_request.url);
+  const wantClean = url.searchParams.get("clean") === "true";
+
+  let outputBytes: Uint8Array | Buffer = imageBytes;
+
+  if (!wantClean) {
+    try {
+      const [logoSettings, overlayText] = await Promise.all([
+        getUserLogoSettings(userId),
+        Promise.resolve(generation.overlay_text as OverlayText | null),
+      ]);
+
+      const composites: OverlayOptions[] = [];
+      const image = sharp(imageBytes);
+      const { width: imgW, height: imgH } = await image.metadata();
+
+      if (imgW && imgH) {
+        // Logo composite
+        if (logoSettings) {
+          const logoBuffer = await fetchLogoBuffer(logoSettings.logoObjectKey);
+          const targetLogoWidth = Math.round(imgW * (logoSettings.sizePercent / 100));
+          const resizedLogo = await sharp(logoBuffer)
+            .resize(targetLogoWidth, undefined, { fit: "inside" })
+            .toBuffer();
+          const logoMeta = await sharp(resizedLogo).metadata();
+          const { left, top } = computeLogoPosition(
+            logoSettings.position, imgW, imgH,
+            logoMeta.width ?? targetLogoWidth,
+            logoMeta.height ?? targetLogoWidth,
+          );
+          composites.push({ input: resizedLogo, left, top });
+        }
+
+        // Text pill composite
+        if (overlayText?.purity && overlayText?.weightGm) {
+          const text = `Purity: ${overlayText.purity} | Weight: ${overlayText.weightGm}gm`;
+          const pillSvg = createTextPillSvg(text, imgW, overlayText.size ?? "medium");
+          const pillMeta = await sharp(pillSvg).metadata();
+          const pillW = pillMeta.width ?? Math.round(imgW * 0.2);
+          const pillH = pillMeta.height ?? Math.round(imgW * 0.04);
+          const { left, top } = computeLogoPosition(
+            overlayText.position as any, imgW, imgH, pillW, pillH,
+          );
+          composites.push({ input: pillSvg, left, top });
+        }
+
+        if (composites.length > 0) {
+          outputBytes = await image
+            .composite(composites)
+            .jpeg({ quality: 90 })
+            .toBuffer();
+        }
+      }
+
+      console.info("[download]", {
+        generationId: parsedParams.data.generationId,
+        userId,
+        hasLogo: !!logoSettings,
+        hasOverlay: !!overlayText,
+        composites: composites.length,
+      });
+    } catch (err) {
+      console.warn("[download] composite failed, serving clean:", err);
+    }
+  }
+
   const fileName = `ornava-${generation.mode}-${generation.id.slice(0, 8)}.jpg`;
 
-  return new NextResponse(r2Response.body, {
+  return new NextResponse(Buffer.from(outputBytes), {
     status: 200,
     headers: {
       "Content-Type": "image/jpeg",

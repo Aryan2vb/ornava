@@ -62,6 +62,18 @@ export async function GET(_request: Request, { params }: RouteParams) {
     },
   });
 
+  console.info("[result:view]", {
+    generationId: generation.id,
+    userId,
+    mode: generation.mode,
+    status: generation.status,
+    modelRoute: generation.model_route,
+    provider: generation.provider,
+    providerModelId: generation.provider_model_id,
+    providerJobId: generation.provider_job_id,
+    durationMs: generation.generation_duration_ms,
+  });
+
   return NextResponse.json(
     toGenerationResultResponse(generation, {
       originalUrl: original.url,
