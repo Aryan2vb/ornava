@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import type { UploadInitResponse } from "@ornava/shared";
 import { NextResponse } from "next/server";
 import { ZodError } from "zod";
-import { createImageUpload } from "@/lib/db";
+import { createImageUpload, getBatchForUser, getBatchImages } from "@/lib/db";
 import { getRequiredUserId } from "@/lib/session";
 import { logAnalyticsEventSafe } from "@/lib/events";
 import { createOriginalUploadUrl } from "@/lib/storage";
@@ -10,6 +10,8 @@ import {
   buildOriginalObjectKey,
   validateUploadInitRequest,
 } from "@/lib/upload";
+
+const MAX_BATCH_SIZE = 10;
 
 export async function POST(request: Request) {
   const userId = await getRequiredUserId();
@@ -20,6 +22,23 @@ export async function POST(request: Request) {
 
   try {
     const uploadRequest = validateUploadInitRequest(await request.json());
+    if (uploadRequest.batchId) {
+      const batch = await getBatchForUser({
+        userId,
+        batchId: uploadRequest.batchId,
+      });
+      if (!batch) {
+        return NextResponse.json({ error: "batch_not_found" }, { status: 404 });
+      }
+      const images = await getBatchImages(uploadRequest.batchId);
+      if (images.length >= MAX_BATCH_SIZE) {
+        return NextResponse.json(
+          { error: "batch_full", message: `A batch can contain up to ${MAX_BATCH_SIZE} images.` },
+          { status: 409 },
+        );
+      }
+    }
+
     const imageId = randomUUID();
     const objectKey = buildOriginalObjectKey({
       userId,
@@ -41,6 +60,7 @@ export async function POST(request: Request) {
       fileSizeBytes: uploadRequest.fileSizeBytes,
       width: uploadRequest.width,
       height: uploadRequest.height,
+      batchId: uploadRequest.batchId,
     });
     await logAnalyticsEventSafe({
       userId,

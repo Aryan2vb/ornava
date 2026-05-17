@@ -47,6 +47,7 @@ export type GenerationWorkItem = {
   id: string;
   user_id: string;
   image_id: string;
+  batch_id: string | null;
   mode: GenerationMode;
   model_route: string;
   generation_brief: GenerationBrief;
@@ -63,6 +64,7 @@ export async function getGenerationWorkItem(generationId: string) {
         g.id,
         g.user_id,
         g.image_id,
+        g.batch_id,
         g.mode,
         g.model_route,
         g.generation_brief,
@@ -178,6 +180,50 @@ export async function markGenerationSubmittedAsync(input: {
       JSON.stringify(input.rawProviderMetadata ?? {}),
     ],
   );
+}
+
+export async function incrementBatchCompleted(batchId: string) {
+  const result = await getPool().query<{
+    completed_count: number;
+    failed_count: number;
+    generated_count: number;
+  }>(
+    `
+      update batches
+      set completed_count = completed_count + 1
+      where id = $1
+      returning completed_count, failed_count, generated_count
+    `,
+    [batchId],
+  );
+  const batch = result.rows[0];
+  if (batch && batch.completed_count + batch.failed_count >= batch.generated_count) {
+    await getPool().query(`update batches set status = 'completed' where id = $1`, [
+      batchId,
+    ]);
+  }
+}
+
+export async function incrementBatchFailed(batchId: string) {
+  const result = await getPool().query<{
+    completed_count: number;
+    failed_count: number;
+    generated_count: number;
+  }>(
+    `
+      update batches
+      set failed_count = failed_count + 1
+      where id = $1
+      returning completed_count, failed_count, generated_count
+    `,
+    [batchId],
+  );
+  const batch = result.rows[0];
+  if (batch && batch.completed_count + batch.failed_count >= batch.generated_count) {
+    await getPool().query(`update batches set status = 'completed' where id = $1`, [
+      batchId,
+    ]);
+  }
 }
 
 export async function logWorkerEventSafe(input: {

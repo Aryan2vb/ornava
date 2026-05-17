@@ -2,6 +2,7 @@ import type {
   GenerationBrief,
   GenerationMode,
   GenerationResultResponse,
+  OverlayText,
 } from "@ornava/shared";
 import type { Route } from "next";
 
@@ -16,7 +17,7 @@ export type GenerationResultRow = {
   provider_model_id: string | null;
   provider_job_id: string | null;
   generation_duration_ms: number | null;
-  overlay_text: { purity: string; weightGm: string; position: string } | null;
+  overlay_text: OverlayText | null;
   original_object_key: string;
   output_object_key: string;
 };

@@ -7,6 +7,7 @@ import type {
   GenerationStatus,
   GenerationStatusResponse,
   JsonValue,
+  OverlayText,
 } from "@ornava/shared";
 import { GUIDED_PROMPT_TEMPLATE_VERSION } from "@ornava/shared";
 import { env } from "./env";
@@ -56,6 +57,7 @@ export type ImageRow = {
   user_id: string;
   original_object_key: string;
   status: "created" | "uploaded" | "failed" | "deleted";
+  overlay_text?: OverlayText | null;
 };
 
 export type GenerationRow = {
@@ -72,6 +74,7 @@ export type GenerationRow = {
   failure_code: string | null;
   failure_message_safe: string | null;
   generation_duration_ms: number | null;
+  overlay_text?: OverlayText | null;
 };
 
 export type GenerationFeedbackRow = {
@@ -201,6 +204,7 @@ export async function createImageUpload(input: {
   fileSizeBytes: number;
   width?: number;
   height?: number;
+  batchId?: string;
 }) {
   const result = await getPool().query<ImageRow>(
     `
@@ -212,9 +216,10 @@ export async function createImageUpload(input: {
         file_type,
         file_size_bytes,
         width,
-        height
+        height,
+        batch_id
       )
-      values ($1, $2, $3, 'created', $4, $5, $6, $7)
+      values ($1, $2, $3, 'created', $4, $5, $6, $7, $8)
       returning id, user_id, original_object_key, status
     `,
     [
@@ -225,6 +230,7 @@ export async function createImageUpload(input: {
       input.fileSizeBytes,
       input.width ?? null,
       input.height ?? null,
+      input.batchId ?? null,
     ],
   );
 
@@ -279,6 +285,7 @@ export async function getUploadedImageForUser(input: {
   const result = await getPool().query<ImageRow>(
     `
       select id, user_id, original_object_key, status
+        , overlay_text
       from images
       where id = $1
         and user_id = $2
@@ -298,6 +305,8 @@ export async function createGeneration(input: {
   generationBrief: GenerationBrief;
   clientRequestId: string;
   previousGenerationId?: string;
+  batchId?: string;
+  overlayText?: OverlayText | null;
 }) {
   const result = await getPool().query<GenerationRow>(
     `
@@ -310,9 +319,11 @@ export async function createGeneration(input: {
         generation_brief,
         prompt_template_version,
         client_request_id,
-        previous_generation_id
+        previous_generation_id,
+        batch_id,
+        overlay_text
       )
-      values ($1, $2, $3, 'queued', $4, $5::jsonb, $6, $7, $8)
+      values ($1, $2, $3, 'queued', $4, $5::jsonb, $6, $7, $8, $9, $10::jsonb)
       on conflict (user_id, client_request_id)
       do update set updated_at = now()
       returning
@@ -328,7 +339,8 @@ export async function createGeneration(input: {
         output_object_key,
         failure_code,
         failure_message_safe,
-        generation_duration_ms
+        generation_duration_ms,
+        overlay_text
     `,
     [
       input.userId,
@@ -339,6 +351,8 @@ export async function createGeneration(input: {
       input.generationBrief.promptTemplateVersion,
       input.clientRequestId,
       input.previousGenerationId ?? null,
+      input.batchId ?? null,
+      input.overlayText ? JSON.stringify(input.overlayText) : null,
     ],
   );
 
@@ -517,6 +531,13 @@ export async function grantCredits(userId: string, amount: number) {
   );
 }
 
+export async function refundCredits(input: { userId: string; amount: number }) {
+  await getPool().query(
+    `update app_users set credits = credits + $2 where id = $1`,
+    [input.userId, input.amount],
+  );
+}
+
 export type InviteCodeRow = {
   id: string;
   code: string;
@@ -608,9 +629,11 @@ export type UserGenerationHistoryRow = {
   status: GenerationStatus;
   generation_brief: GenerationBrief;
   output_object_key: string | null;
+  overlay_text: OverlayText | null;
   feedback_rating: FeedbackRating | null;
   feedback_reason: FeedbackReason | null;
   generation_duration_ms: number | null;
+  completed_at: string | null;
   created_at: string;
 };
 
@@ -624,9 +647,11 @@ export async function listUserGenerations(userId: string, limit = 50) {
         g.status,
         g.generation_brief,
         g.output_object_key,
+        g.overlay_text,
         gf.rating as feedback_rating,
         gf.reason as feedback_reason,
         g.generation_duration_ms,
+        g.completed_at::text,
         g.created_at::text
       from generations g
       left join lateral (
@@ -676,6 +701,7 @@ export type GenerationForWebhookRow = {
   adapter_version: string | null;
   started_at: string | null;
   raw_provider_metadata: Record<string, JsonValue>;
+  batch_id: string | null;
 };
 
 export async function getGenerationByProviderJobId(providerJobId: string) {
@@ -692,7 +718,8 @@ export async function getGenerationByProviderJobId(providerJobId: string) {
         provider_model_id,
         adapter_version,
         started_at::text,
-        raw_provider_metadata
+        raw_provider_metadata,
+        batch_id
       from generations
       where provider_job_id = $1
     `,
@@ -759,4 +786,252 @@ export async function markGenerationFailedFromWebhook(input: {
   );
 
   return result.rows[0] ?? null;
+}
+
+// ===== Batch DB helpers =====
+
+export type BatchRow = {
+  id: string;
+  user_id: string;
+  status: string;
+  generation_brief: GenerationBrief | null;
+  image_count: number;
+  generated_count: number;
+  completed_count: number;
+  failed_count: number;
+  created_at: string;
+};
+
+export type BatchImageRow = {
+  id: string;
+  status: "created" | "uploaded" | "failed";
+  original_object_key: string;
+  overlay_text: OverlayText | null;
+};
+
+export type BatchGenerationRow = {
+  id: string;
+  image_id: string;
+  status: GenerationStatus;
+  failure_code: string | null;
+  failure_message_safe: string | null;
+  generation_duration_ms: number | null;
+  completed_at: string | null;
+  overlay_text: OverlayText | null;
+};
+
+export async function createBatch(input: { userId: string }) {
+  const result = await getPool().query<BatchRow>(
+    `INSERT INTO batches (user_id) VALUES ($1)
+     RETURNING id, user_id, status, generation_brief, image_count, generated_count, completed_count, failed_count, created_at::text`,
+    [input.userId],
+  );
+  return result.rows[0];
+}
+
+export async function getActiveBatchForUser(userId: string) {
+  const result = await getPool().query<BatchRow>(
+    `SELECT id, user_id, status, generation_brief, image_count, generated_count, completed_count, failed_count, created_at::text
+     FROM batches
+     WHERE user_id = $1 AND status IN ('uploading', 'ready', 'generating')
+     ORDER BY created_at DESC LIMIT 1`,
+    [userId],
+  );
+  return result.rows[0] ?? null;
+}
+
+export async function getBatchForUser(input: { userId: string; batchId: string }) {
+  const result = await getPool().query<BatchRow>(
+    `SELECT id, user_id, status, generation_brief, image_count, generated_count, completed_count, failed_count, created_at::text
+     FROM batches WHERE id = $1 AND user_id = $2`,
+    [input.batchId, input.userId],
+  );
+  return result.rows[0] ?? null;
+}
+
+export async function getBatchImages(batchId: string) {
+  const result = await getPool().query<BatchImageRow>(
+    `SELECT id, status, original_object_key, overlay_text FROM images WHERE batch_id = $1 ORDER BY created_at ASC`,
+    [batchId],
+  );
+  return result.rows;
+}
+
+export async function updateImageOverlayTextForUser(input: {
+  userId: string;
+  imageId: string;
+  overlayText: OverlayText;
+}) {
+  const result = await getPool().query<{ id: string }>(
+    `
+      update images
+      set overlay_text = $3::jsonb,
+          updated_at = now()
+      where id = $1
+        and user_id = $2
+        and status in ('created', 'uploaded')
+        and not exists (
+          select 1 from generations
+          where generations.image_id = images.id
+        )
+      returning id
+    `,
+    [input.imageId, input.userId, JSON.stringify(input.overlayText)],
+  );
+  return result.rows[0] ?? null;
+}
+
+export async function clearImageOverlayTextForUser(input: {
+  userId: string;
+  imageId: string;
+}) {
+  const result = await getPool().query<{ id: string }>(
+    `
+      update images
+      set overlay_text = null,
+          updated_at = now()
+      where id = $1
+        and user_id = $2
+        and status in ('created', 'uploaded')
+        and not exists (
+          select 1 from generations
+          where generations.image_id = images.id
+        )
+      returning id
+    `,
+    [input.imageId, input.userId],
+  );
+  return result.rows[0] ?? null;
+}
+
+export async function removeBatchImageForUser(input: {
+  userId: string;
+  batchId: string;
+  imageId: string;
+}) {
+  const client = await getPool().connect();
+  try {
+    await client.query("begin");
+    const result = await client.query<{ id: string; status: BatchImageRow["status"] }>(
+      `
+        update images
+        set status = 'deleted',
+            batch_id = null,
+            updated_at = now()
+        where id = $1
+          and user_id = $2
+          and batch_id = $3
+          and status in ('created', 'uploaded', 'failed')
+          and not exists (
+            select 1 from generations
+            where generations.image_id = images.id
+          )
+        returning id, status
+      `,
+      [input.imageId, input.userId, input.batchId],
+    );
+    const removed = result.rows[0] ?? null;
+    if (removed?.status === "uploaded") {
+      await client.query(
+        `
+          update batches
+          set image_count = greatest(image_count - 1, 0)
+          where id = $1
+        `,
+        [input.batchId],
+      );
+    }
+    await client.query("commit");
+    return removed;
+  } catch (error) {
+    await client.query("rollback");
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+export async function getBatchGenerations(batchId: string) {
+  const result = await getPool().query<BatchGenerationRow>(
+    `SELECT id, image_id, status, failure_code, failure_message_safe, generation_duration_ms, completed_at::text, overlay_text
+     FROM generations WHERE batch_id = $1 ORDER BY created_at ASC`,
+    [batchId],
+  );
+  return result.rows;
+}
+
+export async function updateBatchStatus(input: { batchId: string; status: string }) {
+  await getPool().query(
+    `UPDATE batches SET status = $2 WHERE id = $1`,
+    [input.batchId, input.status],
+  );
+}
+
+export async function saveBatchBrief(input: { batchId: string; brief: GenerationBrief }) {
+  await getPool().query(
+    `UPDATE batches SET generation_brief = $2::jsonb, status = 'ready' WHERE id = $1`,
+    [input.batchId, JSON.stringify(input.brief)],
+  );
+}
+
+export async function setBatchGeneratedCount(input: { batchId: string; count: number }) {
+  await getPool().query(
+    `UPDATE batches SET generated_count = $2, status = 'generating' WHERE id = $1`,
+    [input.batchId, input.count],
+  );
+}
+
+export async function deductCreditsAtomic(input: { userId: string; amount: number }) {
+  const result = await getPool().query<{ credits: number }>(
+    `UPDATE app_users SET credits = credits - $2 WHERE id = $1 AND credits >= $2 RETURNING credits`,
+    [input.userId, input.amount],
+  );
+  return result.rows[0] ?? null;
+}
+
+export async function deductAvailableCreditsAtomic(input: { userId: string; maxAmount: number }) {
+  const result = await getPool().query<{ credits: number; deducted: number }>(
+    `
+      WITH target AS (
+        SELECT id, LEAST(credits, $2)::int AS deducted
+        FROM app_users
+        WHERE id = $1
+          AND credits > 0
+        FOR UPDATE
+      )
+      UPDATE app_users
+      SET credits = app_users.credits - target.deducted
+      FROM target
+      WHERE app_users.id = target.id
+      RETURNING app_users.credits, target.deducted
+    `,
+    [input.userId, input.maxAmount],
+  );
+  return result.rows[0] ?? null;
+}
+
+export async function incrementBatchCompleted(batchId: string) {
+  const result = await getPool().query<{ completed_count: number; failed_count: number; generated_count: number }>(
+    `UPDATE batches SET completed_count = completed_count + 1
+     WHERE id = $1
+     RETURNING completed_count, failed_count, generated_count`,
+    [batchId],
+  );
+  const row = result.rows[0];
+  if (row && row.completed_count + row.failed_count >= row.generated_count) {
+    await updateBatchStatus({ batchId, status: "completed" });
+  }
+}
+
+export async function incrementBatchFailed(batchId: string) {
+  const result = await getPool().query<{ completed_count: number; failed_count: number; generated_count: number }>(
+    `UPDATE batches SET failed_count = failed_count + 1
+     WHERE id = $1
+     RETURNING completed_count, failed_count, generated_count`,
+    [batchId],
+  );
+  const row = result.rows[0];
+  if (row && row.completed_count + row.failed_count >= row.generated_count) {
+    await updateBatchStatus({ batchId, status: "completed" });
+  }
 }

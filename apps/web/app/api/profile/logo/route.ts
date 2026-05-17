@@ -2,8 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getPool } from "@/lib/db";
 import { getRequiredUserId } from "@/lib/session";
-import { createOriginalUploadUrl, createObjectReadUrl } from "@/lib/storage";
-import { env } from "@/lib/env";
+import { createOriginalUploadUrl } from "@/lib/storage";
 
 const LOGO_MAX_SIZE = 2 * 1024 * 1024; // 2MB
 const LOGO_OBJECT_PREFIX = "users";
@@ -12,7 +11,7 @@ function buildLogoObjectKey(userId: string) {
   return `${LOGO_OBJECT_PREFIX}/${userId}/branding/logo.png`;
 }
 
-// GET /api/profile/logo — return current logo settings + signed read URL
+// GET /api/profile/logo — return current logo settings + stable image endpoint
 export async function GET() {
   const userId = await getRequiredUserId();
   if (!userId) {
@@ -20,7 +19,7 @@ export async function GET() {
   }
 
   const result = await getPool().query(
-    `select logo_object_key, position, size_percent, enabled, width, height
+    `select logo_object_key, position, size_percent, enabled, width, height, updated_at::text
      from user_logo_settings where user_id = $1`,
     [userId],
   );
@@ -30,14 +29,11 @@ export async function GET() {
   }
 
   const row = result.rows[0];
-  const { url } = await createObjectReadUrl({
-    bucket: env.R2_ORIGINALS_BUCKET,
-    objectKey: row.logo_object_key,
-  });
 
   return NextResponse.json({
     hasLogo: true,
-    logoUrl: url,
+    logoUrl: "/api/profile/logo/image",
+    logoCacheVersion: row.updated_at,
     position: row.position,
     sizePercent: row.size_percent,
     enabled: row.enabled,
@@ -69,7 +65,7 @@ export async function POST(request: Request) {
     });
 
     // Upsert logo settings
-    await getPool().query(
+    const result = await getPool().query<{ updated_at: string }>(
       `insert into user_logo_settings (user_id, logo_object_key, file_size_bytes, width, height)
        values ($1, $2, $3, $4, $5)
        on conflict (user_id) do update set
@@ -77,11 +73,15 @@ export async function POST(request: Request) {
          file_size_bytes = excluded.file_size_bytes,
          width = excluded.width,
          height = excluded.height,
-         enabled = true`,
+         enabled = true
+       returning updated_at::text`,
       [userId, objectKey, body.fileSizeBytes, body.width, body.height],
     );
 
-    return NextResponse.json({ uploadUrl, expiresAt }, { status: 201 });
+    return NextResponse.json(
+      { uploadUrl, expiresAt, logoCacheVersion: result.rows[0]?.updated_at },
+      { status: 201 },
+    );
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
@@ -99,7 +99,7 @@ const patchSchema = z.object({
   position: z
     .enum(["top-left", "top-right", "bottom-left", "bottom-right", "bottom-center"])
     .optional(),
-  sizePercent: z.number().int().min(8).max(25).optional(),
+  sizePercent: z.number().int().min(8).max(40).optional(),
   enabled: z.boolean().optional(),
 });
 

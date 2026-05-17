@@ -14,6 +14,8 @@ import { env } from "./env";
 import {
   closePool,
   getGenerationWorkItem,
+  incrementBatchCompleted,
+  incrementBatchFailed,
   logWorkerEventSafe,
   markGenerationCompleted,
   markGenerationFailed,
@@ -99,6 +101,9 @@ export function startGenerationWorker() {
           failureMessageSafe:
             "We could not find the uploaded image for this generation.",
         });
+        if (job.data.batchId) {
+          await incrementBatchFailed(job.data.batchId);
+        }
         await logWorkerEventSafe({
           userId: job.data.userId,
           name: "generation_failed",
@@ -135,6 +140,9 @@ export function startGenerationWorker() {
           failureMessageSafe:
             "We could not read the uploaded image. Please upload it again.",
         });
+        if (workItem.batch_id) {
+          await incrementBatchFailed(workItem.batch_id);
+        }
         await logWorkerEventSafe({
           userId: workItem.user_id,
           name: "generation_failed",
@@ -315,6 +323,9 @@ export function startGenerationWorker() {
             generationBrief: { ...workItem.generation_brief },
           },
         });
+        if (workItem.batch_id) {
+          await incrementBatchCompleted(workItem.batch_id);
+        }
         await logWorkerEventSafe({
           userId: workItem.user_id,
           name: "generation_completed",
@@ -348,6 +359,9 @@ export function startGenerationWorker() {
           failureCode: normalizedError.code,
           failureMessageSafe: normalizedError.safeMessage,
         });
+        if (workItem.batch_id) {
+          await incrementBatchFailed(workItem.batch_id);
+        }
         await logWorkerEventSafe({
           userId: workItem.user_id,
           name: "generation_failed",

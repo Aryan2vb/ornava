@@ -8,6 +8,7 @@ export type GenerationJobData = {
   imageId: string;
   mode: GenerationMode;
   modelRoute: string;
+  batchId?: string;
 };
 
 export function buildGenerationJobId(generationId: string) {

@@ -12,6 +12,7 @@ export type UploadInitRequest = {
   fileSizeBytes: number;
   width?: number;
   height?: number;
+  batchId?: string;
 };
 
 export type UploadInitResponse = {
@@ -60,7 +61,7 @@ export type GenerationResultResponse = {
   mode: GenerationMode;
   status: Extract<GenerationStatus, "completed">;
   generationDurationMs?: number;
-  overlayText?: { purity: string; weightGm: string; position: string } | null;
+  overlayText?: OverlayText | null;
   assets: {
     original: {
       url: string;
@@ -71,6 +72,13 @@ export type GenerationResultResponse = {
       expiresAt: string;
     };
   };
+};
+
+export type OverlayText = {
+  purity: "24K" | "22K" | "20K" | "18K";
+  weightGm: string;
+  position: "top-left" | "top-right" | "bottom-left" | "bottom-right" | "bottom-center";
+  size?: "small" | "medium" | "large";
 };
 
 export type SubmitFeedbackRequest = {
@@ -89,4 +97,53 @@ export type RetryGenerationRequest = {
 
 export type RetryGenerationResponse = CreateGenerationResponse & {
   previousGenerationId: string;
+};
+
+// --- Batch types ---
+
+export type CreateBatchResponse = {
+  batchId: string;
+  status: "uploading";
+};
+
+export type BatchGenerateRequest = {
+  mode: GenerationMode;
+  generationBrief: GenerationBrief;
+  clientRequestId: string;
+};
+
+export type BatchGenerateResponse = {
+  batchId: string;
+  generations: Array<{
+    generationId: string;
+    imageId: string;
+    status: "queued" | "skipped_no_credits";
+  }>;
+  creditsDeducted: number;
+  creditsRemaining: number;
+};
+
+export type BatchStatusResponse = {
+  batchId: string;
+  status: "uploading" | "ready" | "generating" | "completed" | "cancelled";
+  generationBrief: GenerationBrief | null;
+  images: Array<{
+    imageId: string;
+    uploadStatus: "created" | "uploaded" | "failed";
+    originalUrl?: string;
+    overlayText?: OverlayText | null;
+  }>;
+  generations: Array<{
+    generationId: string;
+    imageId: string;
+    status: GenerationStatus;
+    failureCode?: string;
+    failureMessage?: string;
+    generationDurationMs?: number;
+    completedAt?: string;
+    overlayText?: OverlayText | null;
+  }>;
+  totalImages: number;
+  completedCount: number;
+  failedCount: number;
 };
