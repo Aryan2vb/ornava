@@ -52,6 +52,21 @@ export function buildDeviceCacheUrl(
   return url.toString();
 }
 
+export function buildDeviceCacheFetchUrl(
+  sourceUrl: string,
+  cacheVersion?: string | null,
+  baseUrl = typeof window !== "undefined" ? window.location.origin : "http://localhost",
+) {
+  const url = new URL(sourceUrl, baseUrl);
+  const appOrigin = new URL(baseUrl).origin;
+
+  if (cacheVersion && url.origin === appOrigin) {
+    url.searchParams.set("cacheVersion", cacheVersion);
+  }
+
+  return url.toString();
+}
+
 export function isDeviceCacheEntryFresh(
   cachedAt: string | null,
   nowMs: number,
@@ -64,6 +79,16 @@ export function isDeviceCacheEntryFresh(
 
 function canUseDeviceCache() {
   return typeof window !== "undefined" && "caches" in window;
+}
+
+export function isDeviceCacheRequestForSource(
+  requestUrl: string,
+  sourceUrl: string,
+  baseUrl = typeof window !== "undefined" ? window.location.origin : "http://localhost",
+) {
+  const request = new URL(requestUrl, baseUrl);
+  const source = new URL(sourceUrl, baseUrl);
+  return request.origin === source.origin && request.pathname === source.pathname;
 }
 
 async function cacheResponseBlob(request: Request, blob: Blob) {
@@ -122,7 +147,11 @@ export async function getCachedObjectUrl(input: {
   }
 
   const blob = await runLimitedCacheFetch(async () => {
-    const response = await fetch(input.sourceUrl, {
+    const fetchUrl = buildDeviceCacheFetchUrl(input.sourceUrl, input.cacheVersion);
+    const fetchOrigin = new URL(fetchUrl).origin;
+    const appOrigin = typeof window !== "undefined" ? window.location.origin : "http://localhost";
+    const response = await fetch(fetchUrl, {
+      cache: fetchOrigin === appOrigin ? "no-store" : "default",
       credentials: "same-origin",
       signal: input.signal,
     });
@@ -147,4 +176,21 @@ export async function deleteDeviceCacheEntry(input: {
   const cacheUrl = buildDeviceCacheUrl(input.cacheKey ?? input.sourceUrl, input.cacheVersion);
   const cache = await caches.open(DEVICE_CACHE_NAME);
   await cache.delete(new Request(cacheUrl, { credentials: "same-origin" }));
+}
+
+export async function deleteDeviceCacheEntriesForSource(input: {
+  sourceUrl: string;
+  cacheKey?: string;
+}) {
+  if (!canUseDeviceCache()) return;
+
+  const sourceUrl = input.cacheKey ?? input.sourceUrl;
+  const cache = await caches.open(DEVICE_CACHE_NAME);
+  const requests = await cache.keys();
+
+  await Promise.all(
+    requests
+      .filter((request) => isDeviceCacheRequestForSource(request.url, sourceUrl))
+      .map((request) => cache.delete(request)),
+  );
 }

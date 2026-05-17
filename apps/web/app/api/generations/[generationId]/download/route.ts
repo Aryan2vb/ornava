@@ -68,7 +68,10 @@ export async function GET(_request: Request, { params }: RouteParams) {
       if (imgW && imgH) {
         // Logo composite
         if (logoSettings) {
-          const logoBuffer = await fetchLogoBuffer(logoSettings.logoObjectKey);
+          const logoBuffer = await fetchLogoBuffer(
+            logoSettings.logoObjectKey,
+            logoSettings.cacheVersion,
+          );
           const targetLogoWidth = Math.round(imgW * (logoSettings.sizePercent / 100));
           const resizedLogo = await sharp(logoBuffer)
             .resize(targetLogoWidth, undefined, { fit: "inside" })

@@ -1,6 +1,7 @@
 import { getPool } from "./db";
 import { createObjectReadUrl } from "./storage";
 import { env } from "./env";
+import sharp from "sharp";
 
 export type LogoPosition =
   | "top-left"
@@ -11,6 +12,7 @@ export type LogoPosition =
 
 export type LogoSettings = {
   logoObjectKey: string;
+  cacheVersion: string | null;
   position: LogoPosition;
   sizePercent: number;
 };
@@ -20,11 +22,26 @@ const logoCache = new Map<string, { buffer: Buffer; fetchedAt: number }>();
 const CACHE_TTL_MS = 5 * 60 * 1000;
 const CACHE_MAX = 50;
 
+export async function normalizeLogoBufferForCompositing(buffer: Buffer): Promise<Buffer> {
+  try {
+    return await sharp(buffer)
+      .trim({
+        background: { r: 0, g: 0, b: 0, alpha: 0 },
+        threshold: 8,
+      })
+      .png()
+      .toBuffer();
+  } catch {
+    return buffer;
+  }
+}
+
 export async function getUserLogoSettings(
   userId: string,
 ): Promise<LogoSettings | null> {
   const result = await getPool().query(
     `select logo_object_key, position, size_percent
+        , updated_at::text as cache_version
      from user_logo_settings where user_id = $1 and enabled = true`,
     [userId],
   );
@@ -34,13 +51,15 @@ export async function getUserLogoSettings(
   const row = result.rows[0];
   return {
     logoObjectKey: row.logo_object_key,
+    cacheVersion: row.cache_version,
     position: row.position,
     sizePercent: row.size_percent,
   };
 }
 
-export async function fetchLogoBuffer(objectKey: string): Promise<Buffer> {
-  const cached = logoCache.get(objectKey);
+export async function fetchLogoBuffer(objectKey: string, cacheVersion?: string | null): Promise<Buffer> {
+  const cacheKey = cacheVersion ? `${objectKey}:${cacheVersion}` : objectKey;
+  const cached = logoCache.get(cacheKey);
   if (cached && Date.now() - cached.fetchedAt < CACHE_TTL_MS) {
     return cached.buffer;
   }
@@ -53,7 +72,9 @@ export async function fetchLogoBuffer(objectKey: string): Promise<Buffer> {
   const res = await fetch(url);
   if (!res.ok) throw new Error(`Failed to fetch logo: ${res.status}`);
 
-  const buffer = Buffer.from(await res.arrayBuffer());
+  const buffer = await normalizeLogoBufferForCompositing(
+    Buffer.from(await res.arrayBuffer()),
+  );
 
   if (logoCache.size >= CACHE_MAX) {
     const oldest = [...logoCache.entries()].sort(
@@ -62,7 +83,7 @@ export async function fetchLogoBuffer(objectKey: string): Promise<Buffer> {
     if (oldest) logoCache.delete(oldest[0]);
   }
 
-  logoCache.set(objectKey, { buffer, fetchedAt: Date.now() });
+  logoCache.set(cacheKey, { buffer, fetchedAt: Date.now() });
   return buffer;
 }
 

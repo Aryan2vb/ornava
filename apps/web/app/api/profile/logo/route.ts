@@ -99,7 +99,7 @@ const patchSchema = z.object({
   position: z
     .enum(["top-left", "top-right", "bottom-left", "bottom-right", "bottom-center"])
     .optional(),
-  sizePercent: z.number().int().min(8).max(25).optional(),
+  sizePercent: z.number().int().min(8).max(40).optional(),
   enabled: z.boolean().optional(),
 });
 

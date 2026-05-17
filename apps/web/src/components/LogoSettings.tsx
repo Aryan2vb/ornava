@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
-import { putDeviceCacheBlob } from "@/lib/device-cache";
+import { deleteDeviceCacheEntriesForSource } from "@/lib/device-cache";
 import { CachedImage } from "./CachedImage";
 import { Icon } from "./Icon";
 
@@ -21,6 +21,8 @@ const POSITIONS: { id: LogoPosition; label: string }[] = [
 ];
 
 const SAMPLE_IMAGE = "/icons/sample-jewelry.jpg";
+const LOGO_SIZE_MIN = 8;
+const LOGO_SIZE_MAX = 40;
 
 function getImageDimensions(file: File) {
   return new Promise<{ width: number; height: number }>((resolve, reject) => {
@@ -35,7 +37,13 @@ function getImageDimensions(file: File) {
 function logoPositionStyle(position: LogoPosition, sizePercent: number): React.CSSProperties {
   const size = `${sizePercent}%`;
   const pad = "3%";
-  const base: React.CSSProperties = { position: "absolute", width: size, height: "auto", objectFit: "contain" };
+  const base: React.CSSProperties = {
+    position: "absolute",
+    width: size,
+    height: "auto",
+    objectFit: "contain",
+    filter: "drop-shadow(0 2px 6px rgba(0, 0, 0, 0.28))",
+  };
 
   switch (position) {
     case "top-left": return { ...base, top: pad, left: pad };
@@ -93,17 +101,14 @@ export function LogoSettings() {
       const { uploadUrl, logoCacheVersion } = await res.json();
 
       await fetch(uploadUrl, { method: "PUT", headers: { "content-type": "image/png" }, body: file });
-      await putDeviceCacheBlob({
+      await deleteDeviceCacheEntriesForSource({
         sourceUrl: "/api/profile/logo/image",
-        blob: file,
-        cacheVersion: logoCacheVersion,
       });
 
-      const previewUrl = URL.createObjectURL(file);
-      setLocalLogoUrl(previewUrl);
+      setLocalLogoUrl("/api/profile/logo/image");
       setState({
         status: "ready",
-        logoUrl: previewUrl,
+        logoUrl: "/api/profile/logo/image",
         logoCacheVersion,
         position: "bottom-right",
         sizePercent: 12,
@@ -158,13 +163,13 @@ export function LogoSettings() {
               style={logoPositionStyle(state.position, state.sizePercent)}
             />
           ) : (
-          <CachedImage
-            cacheVersion={state.logoCacheVersion}
-            src={localLogoUrl}
-            alt="Your logo"
-            loadWhenVisible={false}
-            style={logoPositionStyle(state.position, state.sizePercent)}
-          />
+            <CachedImage
+              cacheVersion={state.logoCacheVersion}
+              src={localLogoUrl}
+              alt="Your logo"
+              loadWhenVisible={false}
+              style={logoPositionStyle(state.position, state.sizePercent)}
+            />
           )}
         </div>
       )}
@@ -230,8 +235,8 @@ export function LogoSettings() {
           </label>
           <input
             type="range"
-            min={8}
-            max={25}
+            min={LOGO_SIZE_MIN}
+            max={LOGO_SIZE_MAX}
             value={state.sizePercent}
             onChange={(e) => setState({ ...state, sizePercent: Number(e.target.value) })}
             onMouseUp={() => updateSettings({ sizePercent: state.sizePercent })}
