@@ -13,6 +13,7 @@ import type { CSSProperties } from "react";
 import { useEffect, useState, useTransition } from "react";
 import { Icon } from "./Icon";
 import { OverlayTextPanel } from "./OverlayTextPanel";
+import { ShowcaseBuilder } from "./ShowcaseBuilder";
 import {
   feedbackReasonLabels,
 } from "@/lib/feedback";
@@ -447,6 +448,7 @@ export function ResultView() {
           imageUrl={downloadUrl}
           initialOverlay={result.overlayText}
         />
+        <ShowcaseBuilder generationId={result.generationId} />
 
         {/* Logo nudge for users without logo */}
         {showLogoNudge && (

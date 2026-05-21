@@ -670,6 +670,222 @@ export async function listUserGenerations(userId: string, limit = 50) {
   return result.rows;
 }
 
+export type ShowcaseRow = {
+  id: string;
+  user_id: string;
+  title: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export type PublicShowcaseRow = {
+  id: string;
+  title: string;
+  user_id: string;
+  jeweler_name: string | null;
+  jeweler_phone: string | null;
+  logo_object_key: string | null;
+};
+
+export type PublicShowcaseItemRow = {
+  generation_id: string;
+  mode: GenerationMode;
+  generation_brief: GenerationBrief;
+  overlay_text: OverlayText | null;
+  output_object_key: string;
+  position: number;
+};
+
+export type ShowcaseActivityRow = {
+  id: string;
+  showcase_id: string;
+  showcase_title: string;
+  generation_id: string | null;
+  mode: GenerationMode | null;
+  generation_brief: GenerationBrief | null;
+  device_info: string | null;
+  viewer_location: string | null;
+  viewed_at: string;
+};
+
+export async function createShowcaseForUser(input: {
+  userId: string;
+  title: string;
+  generationIds: string[];
+}) {
+  const client = await getPool().connect();
+
+  try {
+    await client.query("begin");
+
+    const generationResult = await client.query<{ id: string }>(
+      `
+        select id
+        from generations
+        where user_id = $1
+          and id = any($2::uuid[])
+          and status = 'completed'
+          and output_object_key is not null
+      `,
+      [input.userId, input.generationIds],
+    );
+    const validIds = new Set(generationResult.rows.map((row) => row.id));
+
+    if (validIds.size !== input.generationIds.length) {
+      await client.query("rollback");
+      return null;
+    }
+
+    const showcaseResult = await client.query<ShowcaseRow>(
+      `
+        insert into showcases (user_id, title)
+        values ($1, $2)
+        returning id, user_id, title, created_at::text, updated_at::text
+      `,
+      [input.userId, input.title],
+    );
+    const showcase = showcaseResult.rows[0];
+
+    await client.query(
+      `
+        insert into showcase_items (showcase_id, generation_id, position)
+        select $1, item.generation_id, item.position::int - 1
+        from unnest($2::uuid[]) with ordinality as item(generation_id, position)
+      `,
+      [showcase.id, input.generationIds],
+    );
+
+    await client.query("commit");
+    return showcase;
+  } catch (error) {
+    await client.query("rollback");
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+export async function getPublicShowcase(showcaseId: string) {
+  const showcaseResult = await getPool().query<PublicShowcaseRow>(
+    `
+      select
+        s.id,
+        s.title,
+        s.user_id,
+        u.name as jeweler_name,
+        u.phone as jeweler_phone,
+        logo.logo_object_key
+      from showcases s
+      join app_users u on u.id = s.user_id
+      left join user_logo_settings logo
+        on logo.user_id = s.user_id
+       and logo.enabled = true
+      where s.id = $1
+    `,
+    [showcaseId],
+  );
+  const showcase = showcaseResult.rows[0];
+
+  if (!showcase) {
+    return null;
+  }
+
+  const itemResult = await getPool().query<PublicShowcaseItemRow>(
+    `
+      select
+        g.id as generation_id,
+        g.mode,
+        g.generation_brief,
+        g.overlay_text,
+        g.output_object_key,
+        si.position
+      from showcase_items si
+      join generations g on g.id = si.generation_id
+      where si.showcase_id = $1
+        and g.status = 'completed'
+        and g.output_object_key is not null
+      order by si.position asc, g.created_at asc
+    `,
+    [showcaseId],
+  );
+
+  return {
+    showcase,
+    items: itemResult.rows,
+  };
+}
+
+export async function createShowcaseView(input: {
+  showcaseId: string;
+  generationId?: string;
+  viewerFingerprint?: string;
+  deviceInfo?: string;
+  viewerLocation?: string;
+}) {
+  const result = await getPool().query<{ id: string }>(
+    `
+      insert into showcase_views (
+        showcase_id,
+        generation_id,
+        viewer_fingerprint,
+        device_info,
+        viewer_location
+      )
+      select $1, $2::uuid, $3, $4, $5
+      where exists (
+        select 1
+        from showcases s
+        where s.id = $1
+          and (
+            $2::uuid is null
+            or exists (
+              select 1
+              from showcase_items si
+              where si.showcase_id = s.id
+                and si.generation_id = $2::uuid
+            )
+          )
+      )
+      returning id
+    `,
+    [
+      input.showcaseId,
+      input.generationId ?? null,
+      input.viewerFingerprint ?? null,
+      input.deviceInfo ?? null,
+      input.viewerLocation ?? null,
+    ],
+  );
+
+  return result.rows[0] ?? null;
+}
+
+export async function listShowcaseActivityForUser(userId: string, limit = 10) {
+  const result = await getPool().query<ShowcaseActivityRow>(
+    `
+      select
+        sv.id,
+        sv.showcase_id,
+        s.title as showcase_title,
+        sv.generation_id,
+        g.mode,
+        g.generation_brief,
+        sv.device_info,
+        sv.viewer_location,
+        sv.viewed_at::text
+      from showcase_views sv
+      join showcases s on s.id = sv.showcase_id
+      left join generations g on g.id = sv.generation_id
+      where s.user_id = $1
+      order by sv.viewed_at desc
+      limit $2
+    `,
+    [userId, limit],
+  );
+
+  return result.rows;
+}
+
 export function toGenerationStatusResponse(
   generation: GenerationRow,
 ): GenerationStatusResponse {
