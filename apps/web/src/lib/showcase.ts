@@ -29,13 +29,12 @@ export function normalizeCreateShowcaseInput(input: unknown): NormalizedCreateSh
 export function buildShowcaseWhatsappInquiryUrl(input: {
   phone?: string | null;
   showcaseUrl: string;
-  imageUrl: string;
+  designNumber: number;
 }) {
   const phone = input.phone?.replace(/\D/g, "");
-  const message = [
-    `Hi! I am interested in this design from your showcase: ${input.imageUrl}`,
-    `Showcase: ${input.showcaseUrl}`,
-  ].join("\n\n");
+  const designUrl = new URL(input.showcaseUrl);
+  designUrl.searchParams.set("d", String(input.designNumber));
+  const message = `Hi! I am interested in this design:\n${designUrl}`;
 
   return `https://wa.me/${phone ?? ""}?text=${encodeURIComponent(message)}`;
 }

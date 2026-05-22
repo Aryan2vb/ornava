@@ -38,12 +38,12 @@ test("buildShowcaseWhatsappInquiryUrl targets the jeweler phone with buyer conte
   const url = buildShowcaseWhatsappInquiryUrl({
     phone: "+91 98765 43210",
     showcaseUrl: "https://ornava.test/showcase/abc",
-    imageUrl: "https://images.test/item.jpg",
+    designNumber: 2,
   });
 
   assert.equal(
     url,
-    "https://wa.me/919876543210?text=Hi!%20I%20am%20interested%20in%20this%20design%20from%20your%20showcase%3A%20https%3A%2F%2Fimages.test%2Fitem.jpg%0A%0AShowcase%3A%20https%3A%2F%2Fornava.test%2Fshowcase%2Fabc",
+    "https://wa.me/919876543210?text=Hi!%20I%20am%20interested%20in%20this%20design%3A%0Ahttps%3A%2F%2Fornava.test%2Fshowcase%2Fabc%3Fd%3D2",
   );
 });
 
