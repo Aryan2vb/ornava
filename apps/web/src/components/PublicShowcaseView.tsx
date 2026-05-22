@@ -3,7 +3,6 @@
 import type { PublicShowcaseResponse } from "@ornava/shared";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { buildShowcaseWhatsappInquiryUrl } from "@/lib/showcase";
-import { Icon } from "./Icon";
 
 type ShowcaseState =
   | { status: "loading" }
@@ -15,8 +14,6 @@ export function PublicShowcaseView({ showcaseId }: { showcaseId: string }) {
   const [activeIndex, setActiveIndex] = useState(0);
   const [showcaseUrl, setShowcaseUrl] = useState("");
   const trackRef = useRef<HTMLDivElement | null>(null);
-  const loggedGenerationIds = useRef(new Set<string>());
-  const fingerprintRef = useRef<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -53,22 +50,16 @@ export function PublicShowcaseView({ showcaseId }: { showcaseId: string }) {
     setShowcaseUrl(window.location.href.split("#")[0]);
   }, []);
 
-  useEffect(() => {
-    if (state.status !== "ready") {
-      return;
-    }
-
-    const item = state.showcase.items[activeIndex];
-    if (!item || loggedGenerationIds.current.has(item.generationId)) {
-      return;
-    }
-
-    loggedGenerationIds.current.add(item.generationId);
-    void logShowcaseView(showcaseId, item.generationId, fingerprintRef);
-  }, [activeIndex, showcaseId, state]);
-
   const activeItem =
     state.status === "ready" ? state.showcase.items[activeIndex] : undefined;
+  const activeDesignCount =
+    state.status === "ready"
+      ? Math.min(activeIndex + 1, state.showcase.items.length)
+      : 1;
+  const designProgress =
+    state.status === "ready"
+      ? `${(activeDesignCount / state.showcase.items.length) * 100}%`
+      : "0%";
   const inquiryUrl = useMemo(() => {
     if (state.status !== "ready" || !activeItem || !showcaseUrl) {
       return null;
@@ -165,60 +156,29 @@ export function PublicShowcaseView({ showcaseId }: { showcaseId: string }) {
       </div>
 
       <footer className="public-showcase-footer">
-        <div className="public-showcase-dots" aria-hidden="true">
-          {state.showcase.items.map((item, index) => (
-            <span
-              className={index === activeIndex ? "active" : ""}
-              key={item.generationId}
-            />
-          ))}
+        <div className="public-showcase-progress">
+          <span>
+            Design {activeDesignCount} of {state.showcase.items.length}
+          </span>
+          <div className="public-showcase-meter" aria-hidden="true">
+            <span style={{ width: designProgress }} />
+          </div>
         </div>
         {inquiryUrl ? (
           <a className="public-showcase-inquiry" href={inquiryUrl}>
-            <Icon name="whatsapp" size={20} />
-            Ask about this design
+            <img
+              alt=""
+              className="public-showcase-whatsapp-logo"
+              height={26}
+              src="/icons/whatsapp.svg"
+              width={26}
+            />
+            Ask on WhatsApp
           </a>
         ) : null}
       </footer>
     </main>
   );
-}
-
-async function logShowcaseView(
-  showcaseId: string,
-  generationId: string,
-  fingerprintRef: React.MutableRefObject<string | null>,
-) {
-  try {
-    fingerprintRef.current ??= getShowcaseFingerprint();
-    await fetch(`/api/showcases/public/${showcaseId}/views`, {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-      },
-      body: JSON.stringify({
-        generationId,
-        fingerprint: fingerprintRef.current,
-        deviceInfo: navigator.userAgent,
-      }),
-    });
-  } catch {
-    // Buyer browsing should not wait on activity logging.
-  }
-}
-
-function getShowcaseFingerprint() {
-  const storageKey = "ornava-showcase-viewer";
-  const existing = window.sessionStorage.getItem(storageKey);
-
-  if (existing) {
-    return existing;
-  }
-
-  const fingerprint =
-    globalThis.crypto?.randomUUID?.() ?? `viewer-${Date.now().toString(36)}`;
-  window.sessionStorage.setItem(storageKey, fingerprint);
-  return fingerprint;
 }
 
 function formatJewelryLabel(jewelryType?: string) {

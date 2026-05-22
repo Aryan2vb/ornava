@@ -13,7 +13,6 @@ import type { CSSProperties } from "react";
 import { useEffect, useState, useTransition } from "react";
 import { Icon } from "./Icon";
 import { OverlayTextPanel } from "./OverlayTextPanel";
-import { ShowcaseBuilder } from "./ShowcaseBuilder";
 import {
   feedbackReasonLabels,
 } from "@/lib/feedback";
@@ -347,20 +346,75 @@ export function ResultView() {
             <span className="compare-label compare-label--right">Generated</span>
           </div>
           <figcaption className="result-meta">
-            <span className="brand-row">
-              <Icon name="calendar" size={14} />
-              {modeLabels[result.mode]}
+            <span className="result-meta-copy">
+              <span className="brand-row">
+                <Icon name="calendar" size={14} />
+                {modeLabels[result.mode]}
+              </span>
+              {result.generationDurationMs ? (
+                <span>{Math.round(result.generationDurationMs / 1000)}s</span>
+              ) : null}
             </span>
-            {result.generationDurationMs ? (
-              <span>{Math.round(result.generationDurationMs / 1000)}s</span>
-            ) : null}
+            <span className="result-quick-actions">
+              <button
+                aria-label="Share result"
+                className="result-quick-action result-quick-action--share"
+                disabled={isSharing}
+                type="button"
+                onClick={shareResult}
+              >
+                {isSharing ? (
+                  <span className="spinner" aria-hidden="true" />
+                ) : (
+                  <Icon name="share" size={17} />
+                )}
+                <span>Share</span>
+              </button>
+              <button
+                aria-label="Download result"
+                className="result-quick-action"
+                disabled={isSharing}
+                type="button"
+                onClick={downloadResult}
+              >
+                <Icon name="download" size={17} />
+                <span>Download</span>
+              </button>
+            </span>
           </figcaption>
         </div>
       </div>
 
       <div className="result-col-right">
+        <OverlayTextPanel
+          generationId={result.generationId}
+          imageUrl={downloadUrl}
+          initialOverlay={result.overlayText}
+        />
+        {showLogoNudge ? (
+          <div className="result-logo-nudge">
+            <div>
+              <strong>Add your shop logo</strong>
+              <p className="copy">Branded images build trust on WhatsApp.</p>
+            </div>
+            <div className="result-logo-nudge-actions">
+              <Link href="/profile" className="button gold">
+                Set up
+              </Link>
+              <button
+                aria-label="Dismiss logo setup"
+                className="button secondary result-logo-dismiss"
+                type="button"
+                onClick={() => setShowLogoNudge(false)}
+              >
+                <Icon name="x" size={14} />
+              </button>
+            </div>
+          </div>
+        ) : null}
+
         {/* Feedback — Zomato-style emoji rating */}
-        <div className="result-feedback-card">
+        <div className="result-feedback-card result-feedback-card--secondary">
           {!feedbackMessage ? (
             <>
               <span className="feedback-question">Result kaisa laga?</span>
@@ -440,83 +494,6 @@ export function ResultView() {
           {feedbackError ? (
             <p className="status-text error">{feedbackError}</p>
           ) : null}
-        </div>
-
-        {/* Weight & Purity overlay */}
-        <OverlayTextPanel
-          generationId={result.generationId}
-          imageUrl={downloadUrl}
-          initialOverlay={result.overlayText}
-        />
-        <ShowcaseBuilder generationId={result.generationId} />
-
-        {/* Logo nudge for users without logo */}
-        {showLogoNudge && (
-          <div className="result-feedback-card" style={{ background: "linear-gradient(135deg, #FFF8E1, #FFF3CD)", border: "1px solid #B8860B33" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div>
-                <strong style={{ fontSize: "14px" }}>🏷️ Add your shop logo</strong>
-                <p className="copy" style={{ fontSize: "12px", margin: "4px 0 0" }}>
-                  Branded images = more trust on WhatsApp
-                </p>
-              </div>
-              <div style={{ display: "flex", gap: "8px" }}>
-                <Link href="/profile" className="button gold" style={{ fontSize: "12px", padding: "6px 12px" }}>
-                  Set up →
-                </Link>
-                <button type="button" className="button secondary" style={{ fontSize: "11px", padding: "4px 8px" }} onClick={() => setShowLogoNudge(false)}>✕</button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Actions — share & download at bottom */}
-        <div className="result-actions-card">
-          <button
-            className="button whatsapp result-cta-primary"
-            disabled={isSharing}
-            type="button"
-            onClick={shareResult}
-          >
-            {isSharing ? (
-              <span className="spinner" aria-hidden="true" />
-            ) : (
-              <img alt="" className="wa-logo" height={26} src="/icons/whatsapp.svg" width={26} />
-            )}
-            <span className="result-cta-content">
-              <span className="result-cta-label">{isSharing ? "Opening..." : "WhatsApp pe bhejo"}</span>
-              <span className="result-cta-hint">Customer ko seedha share karo</span>
-            </span>
-          </button>
-
-          <button
-            className="button gold result-cta-secondary"
-            disabled={isSharing}
-            type="button"
-            onClick={downloadResult}
-          >
-            <Icon name="download" size={18} />
-            Download
-          </button>
-
-          <button
-            className="button secondary result-cta-secondary"
-            disabled={isSharing}
-            type="button"
-            onClick={() => {
-              const cleanUrl = `${downloadUrl}?clean=true`;
-              const link = document.createElement("a");
-              link.href = cleanUrl;
-              link.download = `ornava-${result.mode}-${result.generationId.slice(0, 8)}-clean.jpg`;
-              document.body.appendChild(link);
-              link.click();
-              document.body.removeChild(link);
-            }}
-            style={{ fontSize: "13px" }}
-          >
-            <Icon name="download" size={14} />
-            Download without logo
-          </button>
         </div>
       </div>
     </div>

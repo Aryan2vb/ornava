@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  buildShowcasePublicPath,
+  buildShowcaseWhatsappShareText,
   buildShowcaseWhatsappInquiryUrl,
   DEFAULT_SHOWCASE_TITLE,
-  describeShowcaseViewer,
-  getViewerLocationFromHeaders,
   normalizeCreateShowcaseInput,
   shouldLoadShowcaseCandidates,
   toggleShowcaseGenerationSelection,
@@ -34,28 +34,6 @@ test("normalizeCreateShowcaseInput rejects an empty showcase selection", () => {
   );
 });
 
-test("getViewerLocationFromHeaders prefers city and region context when available", () => {
-  const location = getViewerLocationFromHeaders(
-    new Headers({
-      "x-vercel-ip-city": "Mumbai",
-      "x-vercel-ip-country-region": "MH",
-      "x-vercel-ip-country": "IN",
-    }),
-  );
-
-  assert.equal(location, "Mumbai, MH, IN");
-});
-
-test("describeShowcaseViewer falls back to device wording without geo context", () => {
-  assert.equal(
-    describeShowcaseViewer({
-      deviceInfo: "iPhone Safari",
-      viewerLocation: null,
-    }),
-    "A client on iPhone",
-  );
-});
-
 test("buildShowcaseWhatsappInquiryUrl targets the jeweler phone with buyer context", () => {
   const url = buildShowcaseWhatsappInquiryUrl({
     phone: "+91 98765 43210",
@@ -67,6 +45,17 @@ test("buildShowcaseWhatsappInquiryUrl targets the jeweler phone with buyer conte
     url,
     "https://wa.me/919876543210?text=Hi!%20I%20am%20interested%20in%20this%20design%20from%20your%20showcase%3A%20https%3A%2F%2Fimages.test%2Fitem.jpg%0A%0AShowcase%3A%20https%3A%2F%2Fornava.test%2Fshowcase%2Fabc",
   );
+});
+
+test("buildShowcaseWhatsappShareText tells buyers what the collection link opens", () => {
+  assert.equal(
+    buildShowcaseWhatsappShareText("https://ornava.test/showcase/abc"),
+    "New jewelry collection for you.\n\nView the selected designs: https://ornava.test/showcase/abc\n\nReply on WhatsApp to ask about any design.",
+  );
+});
+
+test("buildShowcasePublicPath uses the short public collection route", () => {
+  assert.equal(buildShowcasePublicPath("a1b2c3d4e5f6"), "/s/a1b2c3d4e5f6");
 });
 
 test("shouldLoadShowcaseCandidates stops fetching after an empty history response loads", () => {

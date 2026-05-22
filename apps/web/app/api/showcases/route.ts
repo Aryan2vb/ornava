@@ -6,7 +6,10 @@ import { NextResponse } from "next/server";
 import { ZodError } from "zod";
 import { createShowcaseForUser } from "@/lib/db";
 import { getRequiredUserId } from "@/lib/session";
-import { normalizeCreateShowcaseInput } from "@/lib/showcase";
+import {
+  buildShowcasePublicPath,
+  normalizeCreateShowcaseInput,
+} from "@/lib/showcase";
 
 export async function POST(request: Request) {
   const userId = await getRequiredUserId();
@@ -35,7 +38,7 @@ export async function POST(request: Request) {
     const response: CreateShowcaseResponse = {
       showcaseId: showcase.id,
       title: showcase.title,
-      publicPath: `/showcase/${showcase.id}`,
+      publicPath: buildShowcasePublicPath(showcase.public_code),
     };
 
     return NextResponse.json(response, { status: 201 });

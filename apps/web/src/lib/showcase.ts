@@ -3,6 +3,10 @@ import { z } from "zod";
 export const DEFAULT_SHOWCASE_TITLE = "My Catalog Collection";
 export const MAX_SHOWCASE_ITEMS = 50;
 
+export function buildShowcasePublicPath(publicCode: string) {
+  return `/s/${publicCode}`;
+}
+
 const createShowcaseInputSchema = z.object({
   title: z.string().trim().min(1).max(120).optional(),
   generationIds: z.array(z.string().uuid()).min(1).max(MAX_SHOWCASE_ITEMS),
@@ -22,33 +26,6 @@ export function normalizeCreateShowcaseInput(input: unknown): NormalizedCreateSh
   };
 }
 
-export function getViewerLocationFromHeaders(headers: Headers) {
-  const city = decodeLocationHeader(
-    headers.get("x-vercel-ip-city") ?? headers.get("cf-ipcity"),
-  );
-  const region = decodeLocationHeader(
-    headers.get("x-vercel-ip-country-region") ?? headers.get("cf-region"),
-  );
-  const country = decodeLocationHeader(
-    headers.get("x-vercel-ip-country") ?? headers.get("cf-ipcountry"),
-  );
-  const parts = [city, region, country].filter(Boolean);
-
-  return parts.length > 0 ? parts.join(", ") : null;
-}
-
-export function describeShowcaseViewer(input: {
-  deviceInfo?: string | null;
-  viewerLocation?: string | null;
-}) {
-  if (input.viewerLocation) {
-    return `A client in ${input.viewerLocation}`;
-  }
-
-  const device = getShowcaseDeviceLabel(input.deviceInfo);
-  return device ? `A client on ${device}` : "A client";
-}
-
 export function buildShowcaseWhatsappInquiryUrl(input: {
   phone?: string | null;
   showcaseUrl: string;
@@ -61,6 +38,14 @@ export function buildShowcaseWhatsappInquiryUrl(input: {
   ].join("\n\n");
 
   return `https://wa.me/${phone ?? ""}?text=${encodeURIComponent(message)}`;
+}
+
+export function buildShowcaseWhatsappShareText(showcaseUrl: string) {
+  return [
+    "New jewelry collection for you.",
+    `View the selected designs: ${showcaseUrl}`,
+    "Reply on WhatsApp to ask about any design.",
+  ].join("\n\n");
 }
 
 export function shouldLoadShowcaseCandidates(input: {
@@ -84,44 +69,4 @@ export function toggleShowcaseGenerationSelection(
   }
 
   return [...generationIds, generationId];
-}
-
-function decodeLocationHeader(value: string | null) {
-  if (!value) {
-    return null;
-  }
-
-  try {
-    return decodeURIComponent(value).trim() || null;
-  } catch {
-    return value.trim() || null;
-  }
-}
-
-function getShowcaseDeviceLabel(deviceInfo?: string | null) {
-  if (!deviceInfo) {
-    return null;
-  }
-
-  if (/iphone/i.test(deviceInfo)) {
-    return "iPhone";
-  }
-
-  if (/ipad/i.test(deviceInfo)) {
-    return "iPad";
-  }
-
-  if (/android/i.test(deviceInfo)) {
-    return "Android";
-  }
-
-  if (/mac/i.test(deviceInfo)) {
-    return "Mac";
-  }
-
-  if (/windows/i.test(deviceInfo)) {
-    return "Windows";
-  }
-
-  return null;
 }

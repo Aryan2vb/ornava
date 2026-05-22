@@ -133,26 +133,6 @@ export type PublicShowcaseResponse = {
   }>;
 };
 
-export type CreateShowcaseViewRequest = {
-  generationId?: string;
-  fingerprint?: string;
-  deviceInfo?: string;
-};
-
-export type ShowcaseActivityResponse = {
-  activities: Array<{
-    id: string;
-    showcaseId: string;
-    showcaseTitle: string;
-    generationId?: string;
-    mode?: GenerationMode;
-    jewelryType?: GenerationBrief["jewelryType"];
-    deviceInfo?: string;
-    viewerLocation?: string;
-    viewedAt: string;
-  }>;
-};
-
 // --- Batch types ---
 
 export type CreateBatchResponse = {

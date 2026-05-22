@@ -8,7 +8,7 @@ import { createObjectReadUrl } from "@/lib/storage";
 export const dynamic = "force-dynamic";
 
 const paramsSchema = z.object({
-  id: z.string().uuid(),
+  id: z.union([z.string().uuid(), z.string().regex(/^[a-f0-9]{12}$/)]),
 });
 
 type RouteParams = {

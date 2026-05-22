@@ -2,12 +2,15 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import type { CreateShowcaseResponse, OverlayText } from "@ornava/shared";
 import { CachedImage } from "@/components/CachedImage";
 import { Icon } from "@/components/Icon";
 import { SidebarNav } from "@/components/SidebarNav";
 import { BottomNav } from "@/components/BottomNav";
+import { buildResultPagePath } from "@/lib/result";
 import {
+  buildShowcaseWhatsappShareText,
   MAX_SHOWCASE_ITEMS,
   toggleShowcaseGenerationSelection,
 } from "@/lib/showcase";
@@ -74,6 +77,7 @@ function formatShortDate(date: Date) {
 }
 
 export default function GalleryPage() {
+  const router = useRouter();
   const [generations, setGenerations] = useState<Generation[]>([]);
   const [loading, setLoading] = useState(true);
   const [dateFilter, setDateFilter] = useState<DateFilter>("all");
@@ -197,11 +201,19 @@ export default function GalleryPage() {
       window.location.origin,
     ).toString();
     window.open(
-      `https://wa.me/?text=${encodeURIComponent(`New jewelry showcase from Ornava: ${showcaseUrl}`)}`,
+      `https://wa.me/?text=${encodeURIComponent(buildShowcaseWhatsappShareText(showcaseUrl))}`,
       "_blank",
       "noopener,noreferrer",
     );
   }
+
+  const createdShowcaseUrl =
+    createdShowcase && typeof window !== "undefined"
+      ? new URL(createdShowcase.publicPath, window.location.origin).toString()
+      : createdShowcase?.publicPath;
+  const showcaseWhatsappText = createdShowcaseUrl
+    ? buildShowcaseWhatsappShareText(createdShowcaseUrl)
+    : null;
 
   return (
     <div className="app-shell">
@@ -209,25 +221,32 @@ export default function GalleryPage() {
       <main className="app-main">
         <div className="app-content">
           <header className="gallery-header">
-            <div>
+            <div className="gallery-heading">
               <h1 className="gallery-title">Gallery</h1>
-              <p className="gallery-subtitle">Generated catalog images, ready to share.</p>
+              <p className="gallery-subtitle">
+                {!loading && generations.length > 0
+                  ? `${generations.length} catalog image${generations.length === 1 ? "" : "s"} ready`
+                  : "Generated catalog images, ready to share."}
+              </p>
             </div>
-            <div className="gallery-header-actions">
-              {!loading && generations.length > 0 ? (
+            {!loading && generations.length > 0 ? (
+              <div className="gallery-header-actions">
+                {filteredGenerations.length !== generations.length ? (
+                  <span className="gallery-count">
+                    {filteredGenerations.length} shown
+                  </span>
+                ) : null}
                 <button
+                  aria-label={selectingShowcase ? "Cancel collection selection" : "Select images for collection"}
                   className={`gallery-showcase-toggle${selectingShowcase ? " active" : ""}`}
                   type="button"
                   onClick={startGalleryShowcaseSelection}
                 >
-                  <Icon name={selectingShowcase ? "x" : "spark"} size={15} />
-                  {selectingShowcase ? "Cancel" : "Select for showcase"}
+                  <Icon name={selectingShowcase ? "x" : "link"} size={15} />
+                  {selectingShowcase ? "Cancel" : "Collection"}
                 </button>
-              ) : null}
-              <span className="gallery-count">
-                {filteredGenerations.length} of {generations.length}
-              </span>
-            </div>
+              </div>
+            ) : null}
           </header>
 
           {loading && (
@@ -251,18 +270,6 @@ export default function GalleryPage() {
           {!loading && generations.length > 0 && (
             <>
               <section className="gallery-filters" aria-label="Gallery filters">
-                <div className="gallery-filter-row">
-                  {dateFilters.map((filter) => (
-                    <button
-                      className={`gallery-filter-chip${dateFilter === filter.value ? " active" : ""}`}
-                      key={filter.value}
-                      onClick={() => setDateFilter(filter.value)}
-                      type="button"
-                    >
-                      {filter.label}
-                    </button>
-                  ))}
-                </div>
                 <div className="gallery-filter-row gallery-item-filters">
                   <button
                     className={`gallery-filter-chip${itemFilter === "all" ? " active" : ""}`}
@@ -281,6 +288,21 @@ export default function GalleryPage() {
                       {formatItem(item)}
                     </button>
                   ))}
+                </div>
+                <div className="gallery-filter-toolbar">
+                  <span>Date</span>
+                  <div className="gallery-date-filters">
+                    {dateFilters.map((filter) => (
+                      <button
+                        className={`gallery-date-chip${dateFilter === filter.value ? " active" : ""}`}
+                        key={filter.value}
+                        onClick={() => setDateFilter(filter.value)}
+                        type="button"
+                      >
+                        {filter.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </section>
 
@@ -340,24 +362,28 @@ export default function GalleryPage() {
                       </>
                     );
 
-                    return selectingShowcase ? (
+                    return (
                       <button
-                        aria-pressed={selectedForShowcase}
+                        aria-label={
+                          selectingShowcase
+                            ? `${selectedForShowcase ? "Remove" : "Add"} ${itemLabel} ${formatShortDate(generatedAt)} from collection`
+                            : `Open ${itemLabel} result from ${formatShortDate(generatedAt)}`
+                        }
+                        aria-pressed={selectingShowcase ? selectedForShowcase : undefined}
                         className={`gallery-item gallery-select-item${selectedForShowcase ? " selected" : ""}`}
                         key={g.id}
                         type="button"
-                        onClick={() => toggleShowcaseSelection(g.id)}
+                        onClick={() => {
+                          if (selectingShowcase) {
+                            toggleShowcaseSelection(g.id);
+                            return;
+                          }
+
+                          router.push(buildResultPagePath(g.id));
+                        }}
                       >
                         {content}
                       </button>
-                    ) : (
-                      <Link
-                        key={g.id}
-                        href={`/result?generationId=${g.id}`}
-                        className="gallery-item"
-                      >
-                        {content}
-                      </Link>
                     );
                   })}
                 </div>
@@ -391,8 +417,8 @@ export default function GalleryPage() {
             >
               <div className="showcase-modal-head">
                 <div>
-                  <p className="eyebrow">Gallery showcase</p>
-                  <h2 id="gallery-showcase-title">Share your collection link</h2>
+                  <p className="eyebrow">Collection ready</p>
+                  <h2 id="gallery-showcase-title">Share your collection</h2>
                 </div>
                 <button
                   aria-label="Close gallery showcase share"
@@ -404,18 +430,24 @@ export default function GalleryPage() {
                 </button>
               </div>
               <div className="showcase-share-panel">
-                <div className="showcase-share-link">
-                  <span>{createdShowcase.title}</span>
-                  <strong>{createdShowcase.publicPath}</strong>
+                <div className="showcase-share-summary">
+                  <strong>{createdShowcase.title}</strong>
+                  <span>{showcaseSelection.length} selected design{showcaseSelection.length === 1 ? "" : "s"}</span>
                 </div>
                 <button
-                  className="button whatsapp"
+                  className="button whatsapp showcase-share-whatsapp"
                   type="button"
                   onClick={shareShowcaseToWhatsapp}
                 >
-                  <Icon name="whatsapp" size={18} />
-                  Share showcase to WhatsApp
+                  <img alt="" className="showcase-whatsapp-logo" src="/icons/whatsapp.svg" />
+                  Share on WhatsApp
                 </button>
+                {showcaseWhatsappText ? (
+                  <div className="showcase-message-preview">
+                    <span>WhatsApp message</span>
+                    <p>{showcaseWhatsappText}</p>
+                  </div>
+                ) : null}
                 <div className="showcase-share-actions">
                   <button
                     className="button secondary"

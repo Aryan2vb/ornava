@@ -2,7 +2,10 @@
 
 import type { CreateShowcaseResponse } from "@ornava/shared";
 import { useEffect, useMemo, useState, useTransition } from "react";
-import { shouldLoadShowcaseCandidates } from "@/lib/showcase";
+import {
+  buildShowcaseWhatsappShareText,
+  shouldLoadShowcaseCandidates,
+} from "@/lib/showcase";
 import { Icon } from "./Icon";
 
 type ShowcaseCandidate = {
@@ -110,6 +113,7 @@ export function ShowcaseBuilder({ generationId }: { generationId: string }) {
 
     return new URL(created.publicPath, window.location.origin).toString();
   }, [created]);
+  const whatsappText = publicUrl ? buildShowcaseWhatsappShareText(publicUrl) : null;
 
   function toggleSelection(candidateId: string) {
     if (candidateId === generationId) {
@@ -159,9 +163,8 @@ export function ShowcaseBuilder({ generationId }: { generationId: string }) {
       return;
     }
 
-    const text = `New jewelry showcase from Ornava: ${publicUrl}`;
     window.open(
-      `https://wa.me/?text=${encodeURIComponent(text)}`,
+      `https://wa.me/?text=${encodeURIComponent(buildShowcaseWhatsappShareText(publicUrl))}`,
       "_blank",
       "noopener,noreferrer",
     );
@@ -269,14 +272,20 @@ export function ShowcaseBuilder({ generationId }: { generationId: string }) {
               </>
             ) : (
               <div className="showcase-share-panel">
-                <div className="showcase-share-link">
-                  <span>{created.title}</span>
-                  <strong>{publicUrl}</strong>
+                <div className="showcase-share-summary">
+                  <strong>{created.title}</strong>
+                  <span>{selectedIds.length} selected design{selectedIds.length === 1 ? "" : "s"}</span>
                 </div>
-                <button className="button whatsapp" type="button" onClick={shareToWhatsapp}>
-                  <Icon name="whatsapp" size={18} />
-                  Share showcase to WhatsApp
+                <button className="button whatsapp showcase-share-whatsapp" type="button" onClick={shareToWhatsapp}>
+                  <img alt="" className="showcase-whatsapp-logo" src="/icons/whatsapp.svg" />
+                  Share on WhatsApp
                 </button>
+                {whatsappText ? (
+                  <div className="showcase-message-preview">
+                    <span>WhatsApp message</span>
+                    <p>{whatsappText}</p>
+                  </div>
+                ) : null}
                 <div className="showcase-share-actions">
                   <button className="button secondary" type="button" onClick={copyLink}>
                     <Icon name="check" size={16} />
