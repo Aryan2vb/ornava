@@ -14,6 +14,7 @@ export function PublicShowcaseView({ showcaseId }: { showcaseId: string }) {
   const [activeIndex, setActiveIndex] = useState(0);
   const [showcaseUrl, setShowcaseUrl] = useState("");
   const trackRef = useRef<HTMLDivElement | null>(null);
+  const requestedDesignIndexRef = useRef<number | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -48,7 +49,33 @@ export function PublicShowcaseView({ showcaseId }: { showcaseId: string }) {
 
   useEffect(() => {
     setShowcaseUrl(window.location.href.split("#")[0]);
+    const requestedDesign = Number.parseInt(
+      new URLSearchParams(window.location.search).get("d") ?? "",
+      10,
+    );
+
+    if (Number.isInteger(requestedDesign) && requestedDesign > 0) {
+      requestedDesignIndexRef.current = requestedDesign - 1;
+    }
   }, []);
+
+  useEffect(() => {
+    if (state.status !== "ready" || requestedDesignIndexRef.current === null) {
+      return;
+    }
+
+    const designIndex = Math.min(
+      requestedDesignIndexRef.current,
+      state.showcase.items.length - 1,
+    );
+    const track = trackRef.current;
+
+    setActiveIndex(designIndex);
+    if (track) {
+      track.scrollLeft = track.clientWidth * designIndex;
+    }
+    requestedDesignIndexRef.current = null;
+  }, [state]);
 
   const activeItem =
     state.status === "ready" ? state.showcase.items[activeIndex] : undefined;
@@ -68,9 +95,9 @@ export function PublicShowcaseView({ showcaseId }: { showcaseId: string }) {
     return buildShowcaseWhatsappInquiryUrl({
       phone: state.showcase.jeweler.phone,
       showcaseUrl,
-      imageUrl: activeItem.image.url,
+      designNumber: activeDesignCount,
     });
-  }, [activeItem, showcaseUrl, state]);
+  }, [activeDesignCount, activeItem, showcaseUrl, state]);
 
   function updateActiveCard() {
     const track = trackRef.current;
