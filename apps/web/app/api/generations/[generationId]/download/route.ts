@@ -49,73 +49,68 @@ export async function GET(_request: Request, { params }: RouteParams) {
   }
 
   const imageBytes = new Uint8Array(await r2Response.arrayBuffer());
-  const url = new URL(_request.url);
-  const wantClean = url.searchParams.get("clean") === "true";
-
   let outputBytes: Uint8Array | Buffer = imageBytes;
 
-  if (!wantClean) {
-    try {
-      const [logoSettings, overlayText] = await Promise.all([
-        getUserLogoSettings(userId),
-        Promise.resolve(generation.overlay_text as OverlayText | null),
-      ]);
+  try {
+    const [logoSettings, overlayText] = await Promise.all([
+      getUserLogoSettings(userId),
+      Promise.resolve(generation.overlay_text as OverlayText | null),
+    ]);
 
-      const composites: OverlayOptions[] = [];
-      const image = sharp(imageBytes);
-      const { width: imgW, height: imgH } = await image.metadata();
+    const composites: OverlayOptions[] = [];
+    const image = sharp(imageBytes);
+    const { width: imgW, height: imgH } = await image.metadata();
 
-      if (imgW && imgH) {
-        // Logo composite
-        if (logoSettings) {
-          const logoBuffer = await fetchLogoBuffer(
-            logoSettings.logoObjectKey,
-            logoSettings.cacheVersion,
-          );
-          const targetLogoWidth = Math.round(imgW * (logoSettings.sizePercent / 100));
-          const resizedLogo = await sharp(logoBuffer)
-            .resize(targetLogoWidth, undefined, { fit: "inside" })
-            .toBuffer();
-          const logoMeta = await sharp(resizedLogo).metadata();
-          const { left, top } = computeLogoPosition(
-            logoSettings.position, imgW, imgH,
-            logoMeta.width ?? targetLogoWidth,
-            logoMeta.height ?? targetLogoWidth,
-          );
-          composites.push({ input: resizedLogo, left, top });
-        }
-
-        // Text pill composite
-        if (overlayText?.purity && overlayText?.weightGm) {
-          const text = `Purity: ${overlayText.purity} | Weight: ${overlayText.weightGm}gm`;
-          const pillSvg = createTextPillSvg(text, imgW, overlayText.size ?? "medium");
-          const pillMeta = await sharp(pillSvg).metadata();
-          const pillW = pillMeta.width ?? Math.round(imgW * 0.2);
-          const pillH = pillMeta.height ?? Math.round(imgW * 0.04);
-          const { left, top } = computeLogoPosition(
-            overlayText.position as any, imgW, imgH, pillW, pillH,
-          );
-          composites.push({ input: pillSvg, left, top });
-        }
-
-        if (composites.length > 0) {
-          outputBytes = await image
-            .composite(composites)
-            .jpeg({ quality: 90 })
-            .toBuffer();
-        }
+    if (imgW && imgH) {
+      // Logo composite
+      if (logoSettings) {
+        const logoBuffer = await fetchLogoBuffer(
+          logoSettings.logoObjectKey,
+          logoSettings.cacheVersion,
+        );
+        const targetLogoWidth = Math.round(imgW * (logoSettings.sizePercent / 100));
+        const resizedLogo = await sharp(logoBuffer)
+          .resize(targetLogoWidth, undefined, { fit: "inside" })
+          .toBuffer();
+        const logoMeta = await sharp(resizedLogo).metadata();
+        const { left, top } = computeLogoPosition(
+          logoSettings.position, imgW, imgH,
+          logoMeta.width ?? targetLogoWidth,
+          logoMeta.height ?? targetLogoWidth,
+        );
+        composites.push({ input: resizedLogo, left, top });
       }
 
-      console.info("[download]", {
-        generationId: parsedParams.data.generationId,
-        userId,
-        hasLogo: !!logoSettings,
-        hasOverlay: !!overlayText,
-        composites: composites.length,
-      });
-    } catch (err) {
-      console.warn("[download] composite failed, serving clean:", err);
+      // Text pill composite
+      if (overlayText?.purity && overlayText?.weightGm) {
+        const text = `Purity: ${overlayText.purity} | Weight: ${overlayText.weightGm}gm`;
+        const pillSvg = createTextPillSvg(text, imgW, overlayText.size ?? "medium");
+        const pillMeta = await sharp(pillSvg).metadata();
+        const pillW = pillMeta.width ?? Math.round(imgW * 0.2);
+        const pillH = pillMeta.height ?? Math.round(imgW * 0.04);
+        const { left, top } = computeLogoPosition(
+          overlayText.position as any, imgW, imgH, pillW, pillH,
+        );
+        composites.push({ input: pillSvg, left, top });
+      }
+
+      if (composites.length > 0) {
+        outputBytes = await image
+          .composite(composites)
+          .jpeg({ quality: 90 })
+          .toBuffer();
+      }
     }
+
+    console.info("[download]", {
+      generationId: parsedParams.data.generationId,
+      userId,
+      hasLogo: !!logoSettings,
+      hasOverlay: !!overlayText,
+      composites: composites.length,
+    });
+  } catch (err) {
+    console.warn("[download] composite failed, serving generated output:", err);
   }
 
   const fileName = `ornava-${generation.mode}-${generation.id.slice(0, 8)}.jpg`;

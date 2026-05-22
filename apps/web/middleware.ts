@@ -21,7 +21,7 @@ function isProtectedPath(pathname: string) {
 }
 
 function isProtectedApiPath(pathname: string) {
-  return pathname.startsWith("/api/") && !pathname.startsWith("/api/auth") && !pathname.startsWith("/api/invite") && !pathname.startsWith("/api/webhooks");
+  return pathname.startsWith("/api/") && !pathname.startsWith("/api/auth") && !pathname.startsWith("/api/invite") && !pathname.startsWith("/api/webhooks") && !pathname.startsWith("/api/showcases/public");
 }
 
 function isInviteExemptPath(pathname: string) {

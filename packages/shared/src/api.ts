@@ -99,6 +99,40 @@ export type RetryGenerationResponse = CreateGenerationResponse & {
   previousGenerationId: string;
 };
 
+export type CreateShowcaseRequest = {
+  title?: string;
+  generationIds: string[];
+};
+
+export type CreateShowcaseResponse = {
+  showcaseId: string;
+  title: string;
+  publicPath: string;
+};
+
+export type PublicShowcaseResponse = {
+  showcaseId: string;
+  title: string;
+  jeweler: {
+    name?: string;
+    phone?: string;
+    logo?: {
+      url: string;
+      expiresAt: string;
+    };
+  };
+  items: Array<{
+    generationId: string;
+    mode: GenerationMode;
+    jewelryType?: GenerationBrief["jewelryType"];
+    overlayText?: OverlayText | null;
+    image: {
+      url: string;
+      expiresAt: string;
+    };
+  }>;
+};
+
 // --- Batch types ---
 
 export type CreateBatchResponse = {
