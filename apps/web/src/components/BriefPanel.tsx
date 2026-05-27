@@ -23,7 +23,8 @@ import { Icon } from "./Icon";
 const jewelryLabels: Record<JewelryType, string> = {
   necklace: "Necklace",
   ring: "Ring",
-  bracelet_bangle: "Bracelet / bangle",
+  bracelet: "Bracelet",
+  bangle: "Bangle / kada",
   earrings: "Earrings",
   pendant: "Pendant",
   other: "Other",
@@ -32,13 +33,14 @@ const jewelryLabels: Record<JewelryType, string> = {
 const jewelryIcons: Partial<Record<JewelryType, string>> = {
   necklace: "/icons/necklace.svg",
   ring: "/icons/ring.svg",
-  bracelet_bangle: "/icons/bangle.svg",
+  bracelet: "/icons/bracelete.svg",
+  bangle: "/icons/bangle.svg",
   earrings: "/icons/earings.svg",
   pendant: "/icons/pendent.svg",
 };
 
 const jewelryIconSize: Partial<Record<JewelryType, number>> = {
-  bracelet_bangle: 128,
+  bangle: 128,
 };
 
 const poseThumbnails: Record<string, string> = {
@@ -69,6 +71,11 @@ const poseThumbnails: Record<string, string> = {
   bracelet_raised_arm: "/poses/bangle/pose3.jpeg",
   bracelet_hand_down: "/poses/bangle/pose2.jpeg",
   bracelet_flat_back: "/poses/bangle/pose4.jpeg",
+  bangle_straight_wrist: "/poses/bangle/pose5.jpeg",
+  bangle_wrist_touch: "/poses/bangle/pose1.jpeg",
+  bangle_raised_arm: "/poses/bangle/pose3.jpeg",
+  bangle_hand_down: "/poses/bangle/pose2.jpeg",
+  bangle_flat_back: "/poses/bangle/pose4.jpeg",
 };
 
 const aspectRatioLabels: Record<AspectRatio, string> = {

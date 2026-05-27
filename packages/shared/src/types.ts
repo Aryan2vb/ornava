@@ -4,7 +4,8 @@ export type GenerationMode = (typeof GENERATION_MODES)[number];
 export const JEWELRY_TYPES = [
   "necklace",
   "ring",
-  "bracelet_bangle",
+  "bracelet",
+  "bangle",
   "earrings",
   "pendant",
   "other",

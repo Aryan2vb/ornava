@@ -330,13 +330,13 @@ export const POSE_PRESETS: readonly PosePreset[] = [
     id: "bracelet_straight_wrist",
     label: "Classic wrist",
     bestFor: "Straight wrist, palm down",
-    jewelryTypes: ["bracelet_bangle"],
+    jewelryTypes: ["bracelet"],
     generationMode: "on_model",
     modelPresetId: "model_wrist",
     defaultBackgroundPresetId: "warm_ivory",
     defaultAspectRatio: "4:5",
     promptFragment:
-      "bangle on a straight wrist with hand relaxed and palm facing down, clean white background, soft studio lighting, wrist centered in frame showing full bangle circumference",
+      "bracelet on a straight wrist with hand relaxed and palm facing down, clean white background, soft studio lighting, wrist centered in frame showing the bracelet structure clearly",
     preview: {
       scene: "wrist",
       title: "Classic wrist",
@@ -348,13 +348,13 @@ export const POSE_PRESETS: readonly PosePreset[] = [
     id: "bracelet_wrist_touch",
     label: "Wrist touch",
     bestFor: "Hand touching wrist",
-    jewelryTypes: ["bracelet_bangle"],
+    jewelryTypes: ["bracelet"],
     generationMode: "on_model",
     modelPresetId: "model_wrist",
     defaultBackgroundPresetId: "pure_white",
     defaultAspectRatio: "4:5",
     promptFragment:
-      "bangle on wrist with the other hand gently touching or adjusting it, elegant feminine pose, white background, soft directional lighting highlighting the gold",
+      "bracelet on wrist with the other hand gently touching or adjusting it, elegant feminine pose, white background, soft directional lighting highlighting the bracelet details",
     preview: {
       scene: "wrist",
       title: "Wrist touch",
@@ -366,13 +366,13 @@ export const POSE_PRESETS: readonly PosePreset[] = [
     id: "bracelet_raised_arm",
     label: "Raised arm",
     bestFor: "Arm raised near face",
-    jewelryTypes: ["bracelet_bangle"],
+    jewelryTypes: ["bracelet"],
     generationMode: "on_model",
     modelPresetId: "model_wrist",
     defaultBackgroundPresetId: "pure_white",
     defaultAspectRatio: "4:5",
     promptFragment:
-      "bangle on a raised forearm near the chin/jawline, elegant pose showing the bangle from a slightly angled view, white background, premium beauty lighting",
+      "bracelet on a raised forearm near the chin/jawline, elegant pose showing the bracelet from a slightly angled view, white background, premium beauty lighting",
     preview: {
       scene: "wrist",
       title: "Raised arm",
@@ -384,13 +384,13 @@ export const POSE_PRESETS: readonly PosePreset[] = [
     id: "bracelet_hand_down",
     label: "Hand down",
     bestFor: "Relaxed hand, diagonal",
-    jewelryTypes: ["bracelet_bangle"],
+    jewelryTypes: ["bracelet"],
     generationMode: "on_model",
     modelPresetId: "model_wrist",
     defaultBackgroundPresetId: "light_gray",
     defaultAspectRatio: "4:5",
     promptFragment:
-      "bangle on wrist with hand relaxed pointing diagonally downward, fingers slightly spread, gray studio background, soft shadow beneath the hand",
+      "bracelet on wrist with hand relaxed pointing diagonally downward, fingers slightly spread, gray studio background, soft shadow beneath the hand",
     preview: {
       scene: "wrist",
       title: "Hand down",
@@ -402,13 +402,13 @@ export const POSE_PRESETS: readonly PosePreset[] = [
     id: "bracelet_flat_back",
     label: "Flat back",
     bestFor: "Back of hand flat",
-    jewelryTypes: ["bracelet_bangle"],
+    jewelryTypes: ["bracelet"],
     generationMode: "on_model",
     modelPresetId: "model_wrist",
     defaultBackgroundPresetId: "pure_white",
     defaultAspectRatio: "4:5",
     promptFragment:
-      "bangle on wrist with hand flat showing back of hand, fingers together, white background, overhead soft lighting, clean catalog composition",
+      "bracelet on wrist with hand flat showing back of hand, fingers together, white background, overhead soft lighting, clean catalog composition",
     preview: {
       scene: "wrist",
       title: "Flat back",
@@ -417,10 +417,118 @@ export const POSE_PRESETS: readonly PosePreset[] = [
     },
   },
   {
-    id: "bracelet_studio_circular",
+    id: "bracelet_studio_flat",
+    label: "Studio flat",
+    bestFor: "Clean bracelet catalog",
+    jewelryTypes: ["bracelet"],
+    generationMode: "studio",
+    modelPresetId: "studio_none",
+    defaultBackgroundPresetId: "pure_white",
+    defaultAspectRatio: "1:1",
+    promptFragment:
+      "bracelet in a studio catalog layout, arranged to show the clasp, links, beads, charms, stones, or chain structure exactly as in the uploaded photo",
+    preview: {
+      scene: "studio-generic",
+      title: "Studio flat",
+      subtitle: "Clean bracelet catalog",
+      placement: "Your bracelet stays accurate",
+    },
+  },
+  {
+    id: "bangle_straight_wrist",
+    label: "Classic wrist",
+    bestFor: "Straight wrist, palm down",
+    jewelryTypes: ["bangle"],
+    generationMode: "on_model",
+    modelPresetId: "model_wrist",
+    defaultBackgroundPresetId: "warm_ivory",
+    defaultAspectRatio: "4:5",
+    promptFragment:
+      "bangle or kada on a straight wrist with hand relaxed and palm facing down, clean white background, soft studio lighting, wrist centered in frame showing the full rigid circular form",
+    preview: {
+      scene: "wrist",
+      title: "Classic wrist",
+      subtitle: "Straight wrist, palm down",
+      placement: "Your bangle appears here",
+    },
+  },
+  {
+    id: "bangle_wrist_touch",
+    label: "Wrist touch",
+    bestFor: "Hand touching wrist",
+    jewelryTypes: ["bangle"],
+    generationMode: "on_model",
+    modelPresetId: "model_wrist",
+    defaultBackgroundPresetId: "pure_white",
+    defaultAspectRatio: "4:5",
+    promptFragment:
+      "bangle or kada on wrist with the other hand gently touching or adjusting it, elegant feminine pose, white background, soft directional lighting highlighting the gold",
+    preview: {
+      scene: "wrist",
+      title: "Wrist touch",
+      subtitle: "Hand touching wrist",
+      placement: "Your bangle appears here",
+    },
+  },
+  {
+    id: "bangle_raised_arm",
+    label: "Raised arm",
+    bestFor: "Arm raised near face",
+    jewelryTypes: ["bangle"],
+    generationMode: "on_model",
+    modelPresetId: "model_wrist",
+    defaultBackgroundPresetId: "pure_white",
+    defaultAspectRatio: "4:5",
+    promptFragment:
+      "bangle or kada on a raised forearm near the chin/jawline, elegant pose showing the rigid circular form from a slightly angled view, white background, premium beauty lighting",
+    preview: {
+      scene: "wrist",
+      title: "Raised arm",
+      subtitle: "Arm near face",
+      placement: "Your bangle appears here",
+    },
+  },
+  {
+    id: "bangle_hand_down",
+    label: "Hand down",
+    bestFor: "Relaxed hand, diagonal",
+    jewelryTypes: ["bangle"],
+    generationMode: "on_model",
+    modelPresetId: "model_wrist",
+    defaultBackgroundPresetId: "light_gray",
+    defaultAspectRatio: "4:5",
+    promptFragment:
+      "bangle or kada on wrist with hand relaxed pointing diagonally downward, fingers slightly spread, gray studio background, soft shadow beneath the hand",
+    preview: {
+      scene: "wrist",
+      title: "Hand down",
+      subtitle: "Relaxed diagonal",
+      placement: "Your bangle appears here",
+    },
+  },
+  {
+    id: "bangle_flat_back",
+    label: "Flat back",
+    bestFor: "Back of hand flat",
+    jewelryTypes: ["bangle"],
+    generationMode: "on_model",
+    modelPresetId: "model_wrist",
+    defaultBackgroundPresetId: "pure_white",
+    defaultAspectRatio: "4:5",
+    promptFragment:
+      "bangle or kada on wrist with hand flat showing back of hand, fingers together, white background, overhead soft lighting, clean catalog composition",
+    preview: {
+      scene: "wrist",
+      title: "Flat back",
+      subtitle: "Back of hand flat",
+      placement: "Your bangle appears here",
+    },
+  },
+  {
+    id: "bangle_studio_circular",
     label: "Studio flat",
     bestFor: "Clean bangle catalog",
-    jewelryTypes: ["bracelet_bangle"],
+    jewelryTypes: ["bangle"],
     generationMode: "studio",
     modelPresetId: "studio_none",
     defaultBackgroundPresetId: "pure_white",
@@ -682,7 +790,7 @@ export function getDefaultGenerationBrief(
 ): GenerationBrief {
   const preset =
     getPosePresetsForJewelryType(jewelryType)[0] ??
-    POSE_PRESETS.find((option) => option.id === "ring_standing_studio")!;
+    POSE_PRESETS.find((option) => option.id === "ring_other")!;
 
   return {
     jewelryType,

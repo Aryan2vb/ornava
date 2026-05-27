@@ -56,13 +56,25 @@ test("buildGenerationPrompt includes zero-typing pose selections", () => {
   assert.match(prompt, /deep red/i);
 });
 
-test("bracelet and bangle defaults protect rigid circular product identity", () => {
-  const brief = getDefaultGenerationBrief("bracelet_bangle");
+test("bangle defaults protect rigid circular product identity", () => {
+  const brief = getDefaultGenerationBrief("bangle");
   const prompt = buildGenerationPrompt(brief.generationMode, brief);
 
-  assert.equal(brief.posePresetId, "bracelet_straight_wrist");
+  assert.equal(brief.posePresetId, "bangle_straight_wrist");
   assert.equal(brief.generationMode, "on_model");
   assert.match(prompt, /closed circular/i);
   assert.match(prompt, /wrist.*pass through|pass through.*inner opening/i);
   assert.match(prompt, /centerpiece/i);
+});
+
+test("bracelet prompt protects flexible bracelet identity", () => {
+  const brief = getDefaultGenerationBrief("bracelet");
+  const prompt = buildGenerationPrompt(brief.generationMode, brief);
+
+  assert.equal(brief.posePresetId, "bracelet_straight_wrist");
+  assert.equal(brief.generationMode, "on_model");
+  assert.match(prompt, /flexible/i);
+  assert.match(prompt, /chain|links|beads/i);
+  assert.match(prompt, /do not convert.*bangle|do not convert.*kada/i);
+  assert.doesNotMatch(prompt, /closed circular antique-gold kada\/bangle/i);
 });

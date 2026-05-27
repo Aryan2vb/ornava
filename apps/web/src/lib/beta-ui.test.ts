@@ -17,7 +17,7 @@ test("generationModeCards exposes buyer-facing mode copy", () => {
 test("betaNavItems matches the phase 1 mobile shell", () => {
   assert.deepEqual(
     betaNavItems.map((item) => item.label),
-    ["Home", "Create", "Results", "Profile"],
+    ["Home", "Create", "Gallery", "Profile"],
   );
 });
 

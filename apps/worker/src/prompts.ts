@@ -23,7 +23,8 @@ const bangleOnModelPrompt =
 const jewelryTypeLabels: Record<GenerationBrief["jewelryType"], string> = {
   necklace: "necklace",
   ring: "ring",
-  bracelet_bangle: "bracelet or bangle",
+  bracelet: "bracelet",
+  bangle: "bangle or kada",
   earrings: "earrings",
   pendant: "pendant",
   other: "jewelry item",
@@ -32,8 +33,10 @@ const jewelryTypeLabels: Record<GenerationBrief["jewelryType"], string> = {
 const jewelryIdentityRules: Partial<
   Record<GenerationBrief["jewelryType"], string>
 > = {
-  bracelet_bangle:
-    "Critical product identity for bracelet/bangle/kada: preserve the exact rigid geometry from the uploaded photo. If it is a closed circular bangle, keep it a closed circular bangle; do not convert it into an open cuff, crescent, partial arc, chain bracelet, or flexible bracelet. Preserve the centerpiece, face, clasp, carved motif placement, thickness, inner opening, and outer silhouette exactly. If multiple bangles are shown, reproduce the exact same count and stacking arrangement.",
+  bracelet:
+    "Critical product identity for bracelet: preserve the exact flexible or detailed wrist-jewelry structure from the uploaded photo, including chain links, beads, charms, stones, clasp, thread, chain drape, spacing, thickness, and all decorative elements. Do not convert the bracelet into a rigid closed circular bangle, kada, solid cuff, thick ring, or generic wrist band. If it is a chain bracelet, charm bracelet, beaded bracelet, tennis bracelet, link bracelet, or any other bracelet style, keep that exact structure.",
+  bangle:
+    "Critical product identity for bangle/kada: preserve the exact rigid geometry from the uploaded photo. If it is a closed circular bangle, keep it a closed circular bangle; do not convert it into an open cuff, crescent, partial arc, chain bracelet, or flexible bracelet. Preserve the centerpiece, face, clasp, carved motif placement, thickness, inner opening, and outer silhouette exactly. If multiple bangles are shown, reproduce the exact same count and stacking arrangement.",
   earrings:
     "Critical product identity for earrings: if the photo shows a pair, output exactly 2 earrings. Preserve the exact drop length, jhumka shape, hook style, and stone arrangement. Do not merge a pair into one or split one into two.",
   necklace:
@@ -44,7 +47,7 @@ export function buildGenerationPrompt(
   mode: GenerationMode,
   brief?: GenerationBrief,
 ) {
-  if (brief?.jewelryType === "bracelet_bangle" && mode === "on_model") {
+  if (brief?.jewelryType === "bangle" && mode === "on_model") {
     const posePreset = getPosePreset(brief.posePresetId);
     const backgroundPreset = getBackgroundPreset(brief.backgroundPresetId);
     const posePrompt =

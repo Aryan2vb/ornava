@@ -40,6 +40,8 @@ const dateFilters: Array<{ value: DateFilter; label: string }> = [
 const jewelryLabels: Record<string, string> = {
   necklace: "Necklace",
   ring: "Ring",
+  bracelet: "Bracelet",
+  bangle: "Bangle",
   bracelet_bangle: "Bracelet",
   earrings: "Earrings",
   pendant: "Pendant",
