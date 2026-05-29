@@ -695,6 +695,8 @@ export type PublicShowcaseRow = {
   jeweler_name: string | null;
   jeweler_phone: string | null;
   logo_object_key: string | null;
+  logo_position: OverlayText["position"] | null;
+  logo_size_percent: number | null;
 };
 
 export type PublicShowcaseItemRow = {
@@ -876,7 +878,9 @@ export async function getPublicShowcase(showcaseLocator: string) {
         s.user_id,
         u.name as jeweler_name,
         u.phone as jeweler_phone,
-        logo.logo_object_key
+        logo.logo_object_key,
+        logo.position as logo_position,
+        logo.size_percent as logo_size_percent
       from showcases s
       join app_users u on u.id = s.user_id
       left join user_logo_settings logo

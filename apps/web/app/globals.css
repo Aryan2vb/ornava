@@ -5328,6 +5328,7 @@ button {
 .public-showcase-image-frame {
   min-height: 0;
   overflow: hidden;
+  position: relative;
   border: 1px solid rgba(212, 168, 67, 0.48);
   border-radius: 8px;
   background: #060606;
@@ -5336,6 +5337,84 @@ button {
 
 .public-showcase-image {
   object-fit: contain;
+}
+
+.public-showcase-image-logo {
+  height: auto;
+  max-width: 40%;
+  object-fit: contain;
+  pointer-events: none;
+  position: absolute;
+  z-index: 2;
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.28));
+}
+
+.public-showcase-image-meta {
+  align-items: center;
+  background: rgba(255, 255, 255, 0.76);
+  border: 1px solid rgba(255, 255, 255, 0.66);
+  border-radius: 999px;
+  color: #1a1a1a;
+  display: inline-flex;
+  font-size: 12px;
+  font-weight: 760;
+  line-height: 15px;
+  min-height: 28px;
+  padding: 0 10px;
+  pointer-events: none;
+  position: absolute;
+  z-index: 3;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+}
+
+.public-showcase-image-meta--top-left {
+  left: 3%;
+  top: 3%;
+}
+
+.public-showcase-image-meta--top-right {
+  right: 3%;
+  top: 3%;
+}
+
+.public-showcase-image-meta--bottom-left {
+  bottom: 3%;
+  left: 3%;
+}
+
+.public-showcase-image-meta--bottom-right {
+  bottom: 3%;
+  right: 3%;
+}
+
+.public-showcase-image-meta--bottom-center {
+  bottom: 3%;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.public-showcase-select {
+  align-items: center;
+  appearance: none;
+  background: rgba(255, 250, 240, 0.88);
+  border: 1px solid rgba(212, 168, 67, 0.5);
+  border-radius: 999px;
+  color: #1a1a1a;
+  display: inline-flex;
+  height: 38px;
+  justify-content: center;
+  padding: 0;
+  position: absolute;
+  right: 10px;
+  top: 10px;
+  width: 38px;
+  z-index: 4;
+}
+
+.public-showcase-select.selected {
+  background: var(--gold-bright);
+  border-color: rgba(255, 255, 255, 0.72);
+  color: #1a1a1a;
 }
 
 .public-showcase-caption,
@@ -5433,6 +5512,12 @@ button {
   box-shadow: 0 8px 28px rgba(13, 93, 74, 0.34);
   font-size: 14px;
   font-weight: 800;
+}
+
+.public-showcase-inquiry:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+  box-shadow: none;
 }
 
 .public-showcase-whatsapp-logo {

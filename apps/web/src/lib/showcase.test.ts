@@ -56,6 +56,19 @@ test("buildShowcaseWhatsappInquiryUrl targets the jeweler phone with buyer conte
   );
 });
 
+test("buildShowcaseWhatsappInquiryUrl sends selected collection designs together", () => {
+  const url = buildShowcaseWhatsappInquiryUrl({
+    phone: "+91 98765 43210",
+    showcaseUrl: "https://ornava.test/showcase/abc",
+    designNumbers: [3, 1],
+  });
+
+  assert.equal(
+    url,
+    "https://wa.me/919876543210?text=Hi!%20I%20am%20interested%20in%20these%20designs%3A%0ADesign%201%3A%20https%3A%2F%2Fornava.test%2Fshowcase%2Fabc%3Fd%3D1%0ADesign%203%3A%20https%3A%2F%2Fornava.test%2Fshowcase%2Fabc%3Fd%3D3",
+  );
+});
+
 test("buildShowcaseWhatsappShareText tells buyers what the collection link opens", () => {
   assert.equal(
     buildShowcaseWhatsappShareText("https://ornava.test/showcase/abc"),

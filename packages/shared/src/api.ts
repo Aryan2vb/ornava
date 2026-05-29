@@ -148,6 +148,8 @@ export type PublicShowcaseResponse = {
     logo?: {
       url: string;
       expiresAt: string;
+      position: OverlayText["position"];
+      sizePercent: number;
     };
   };
   items: Array<{

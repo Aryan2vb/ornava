@@ -41,12 +41,30 @@ export function normalizeUpdateShowcaseInput(input: unknown): NormalizedUpdateSh
 export function buildShowcaseWhatsappInquiryUrl(input: {
   phone?: string | null;
   showcaseUrl: string;
-  designNumber: number;
+  designNumber?: number;
+  designNumbers?: number[];
 }) {
   const phone = input.phone?.replace(/\D/g, "");
-  const designUrl = new URL(input.showcaseUrl);
-  designUrl.searchParams.set("d", String(input.designNumber));
-  const message = `Hi! I am interested in this design:\n${designUrl}`;
+  const designNumbers = input.designNumbers?.length
+    ? [...new Set(input.designNumbers)].sort((a, b) => a - b)
+    : input.designNumber
+      ? [input.designNumber]
+      : [];
+  const designUrls = designNumbers.map((designNumber) => {
+    const designUrl = new URL(input.showcaseUrl);
+    designUrl.searchParams.set("d", String(designNumber));
+    return { designNumber, designUrl };
+  });
+  const message =
+    designUrls.length > 1
+      ? [
+          "Hi! I am interested in these designs:",
+          ...designUrls.map(
+            ({ designNumber, designUrl }) =>
+              `Design ${designNumber}: ${designUrl}`,
+          ),
+        ].join("\n")
+      : `Hi! I am interested in this design:\n${designUrls[0]?.designUrl ?? input.showcaseUrl}`;
 
   return `https://wa.me/${phone ?? ""}?text=${encodeURIComponent(message)}`;
 }
