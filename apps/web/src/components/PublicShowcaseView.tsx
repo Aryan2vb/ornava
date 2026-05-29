@@ -1,7 +1,9 @@
 "use client";
 
 import type { PublicShowcaseResponse } from "@ornava/shared";
+import type { CSSProperties } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { Icon } from "@/components/Icon";
 import { buildShowcaseWhatsappInquiryUrl } from "@/lib/showcase";
 
 type ShowcaseState =
@@ -12,6 +14,7 @@ type ShowcaseState =
 export function PublicShowcaseView({ showcaseId }: { showcaseId: string }) {
   const [state, setState] = useState<ShowcaseState>({ status: "loading" });
   const [activeIndex, setActiveIndex] = useState(0);
+  const [selectedDesignIds, setSelectedDesignIds] = useState<string[]>([]);
   const [showcaseUrl, setShowcaseUrl] = useState("");
   const trackRef = useRef<HTMLDivElement | null>(null);
   const requestedDesignIndexRef = useRef<number | null>(null);
@@ -31,6 +34,9 @@ export function PublicShowcaseView({ showcaseId }: { showcaseId: string }) {
       .then((showcase) => {
         if (!cancelled) {
           setState({ status: "ready", showcase });
+          setSelectedDesignIds(
+            showcase.items[0] ? [showcase.items[0].generationId] : [],
+          );
         }
       })
       .catch(() => {
@@ -71,33 +77,41 @@ export function PublicShowcaseView({ showcaseId }: { showcaseId: string }) {
     const track = trackRef.current;
 
     setActiveIndex(designIndex);
+    setSelectedDesignIds([state.showcase.items[designIndex].generationId]);
     if (track) {
       track.scrollLeft = track.clientWidth * designIndex;
     }
     requestedDesignIndexRef.current = null;
   }, [state]);
 
-  const activeItem =
-    state.status === "ready" ? state.showcase.items[activeIndex] : undefined;
   const activeDesignCount =
     state.status === "ready"
       ? Math.min(activeIndex + 1, state.showcase.items.length)
       : 1;
+  const selectedDesignNumbers =
+    state.status === "ready"
+      ? state.showcase.items
+          .map((item, index) =>
+            selectedDesignIds.includes(item.generationId) ? index + 1 : null,
+          )
+          .filter((designNumber): designNumber is number => designNumber !== null)
+      : [];
+  const selectedDesignCount = selectedDesignNumbers.length;
   const designProgress =
     state.status === "ready"
       ? `${(activeDesignCount / state.showcase.items.length) * 100}%`
       : "0%";
   const inquiryUrl = useMemo(() => {
-    if (state.status !== "ready" || !activeItem || !showcaseUrl) {
+    if (state.status !== "ready" || selectedDesignCount === 0 || !showcaseUrl) {
       return null;
     }
 
     return buildShowcaseWhatsappInquiryUrl({
       phone: state.showcase.jeweler.phone,
       showcaseUrl,
-      designNumber: activeDesignCount,
+      designNumbers: selectedDesignNumbers,
     });
-  }, [activeDesignCount, activeItem, showcaseUrl, state]);
+  }, [selectedDesignCount, selectedDesignNumbers, showcaseUrl, state]);
 
   function updateActiveCard() {
     const track = trackRef.current;
@@ -107,6 +121,14 @@ export function PublicShowcaseView({ showcaseId }: { showcaseId: string }) {
 
     const slideWidth = track.clientWidth || 1;
     setActiveIndex(Math.round(track.scrollLeft / slideWidth));
+  }
+
+  function toggleSelectedDesign(generationId: string) {
+    setSelectedDesignIds((current) =>
+      current.includes(generationId)
+        ? current.filter((item) => item !== generationId)
+        : [...current, generationId],
+    );
   }
 
   if (state.status === "loading") {
@@ -165,6 +187,39 @@ export function PublicShowcaseView({ showcaseId }: { showcaseId: string }) {
                 loading={index === 0 ? "eager" : "lazy"}
                 src={item.image.url}
               />
+              {state.showcase.jeweler.logo ? (
+                <img
+                  alt=""
+                  className="public-showcase-image-logo"
+                  src={state.showcase.jeweler.logo.url}
+                  style={logoOverlayStyle(
+                    state.showcase.jeweler.logo.position,
+                    state.showcase.jeweler.logo.sizePercent,
+                  )}
+                />
+              ) : null}
+              {item.overlayText ? (
+                <span
+                  className={`public-showcase-image-meta public-showcase-image-meta--${item.overlayText.position}`}
+                >
+                  {item.overlayText.purity} · {item.overlayText.weightGm}gm
+                </span>
+              ) : null}
+              <button
+                aria-label={`${selectedDesignIds.includes(item.generationId) ? "Remove" : "Select"} design ${index + 1}`}
+                aria-pressed={selectedDesignIds.includes(item.generationId)}
+                className={
+                  selectedDesignIds.includes(item.generationId)
+                    ? "public-showcase-select selected"
+                    : "public-showcase-select"
+                }
+                type="button"
+                onClick={() => toggleSelectedDesign(item.generationId)}
+              >
+                {selectedDesignIds.includes(item.generationId) ? (
+                  <Icon name="check" size={15} />
+                ) : null}
+              </button>
             </div>
             <div className="public-showcase-caption">
               <div>
@@ -185,7 +240,9 @@ export function PublicShowcaseView({ showcaseId }: { showcaseId: string }) {
       <footer className="public-showcase-footer">
         <div className="public-showcase-progress">
           <span>
-            Design {activeDesignCount} of {state.showcase.items.length}
+            {selectedDesignCount > 0
+              ? `${selectedDesignCount} selected`
+              : "Select designs"}
           </span>
           <div className="public-showcase-meter" aria-hidden="true">
             <span style={{ width: designProgress }} />
@@ -200,12 +257,49 @@ export function PublicShowcaseView({ showcaseId }: { showcaseId: string }) {
               src="/icons/whatsapp.svg"
               width={26}
             />
-            Ask on WhatsApp
+            {selectedDesignCount > 1
+              ? `Send ${selectedDesignCount} on WhatsApp`
+              : "Ask on WhatsApp"}
           </a>
-        ) : null}
+        ) : (
+          <button className="public-showcase-inquiry" disabled type="button">
+            <img
+              alt=""
+              className="public-showcase-whatsapp-logo"
+              height={26}
+              src="/icons/whatsapp.svg"
+              width={26}
+            />
+            Select designs
+          </button>
+        )}
       </footer>
     </main>
   );
+}
+
+function logoOverlayStyle(
+  position: NonNullable<PublicShowcaseResponse["jeweler"]["logo"]>["position"],
+  sizePercent: number,
+): CSSProperties {
+  const size = `${sizePercent}%`;
+  const pad = "3%";
+  const base: CSSProperties = {
+    width: size,
+  };
+
+  switch (position) {
+    case "top-left":
+      return { ...base, top: pad, left: pad };
+    case "top-right":
+      return { ...base, top: pad, right: pad };
+    case "bottom-left":
+      return { ...base, bottom: pad, left: pad };
+    case "bottom-right":
+      return { ...base, bottom: pad, right: pad };
+    case "bottom-center":
+      return { ...base, bottom: pad, left: "50%", transform: "translateX(-50%)" };
+  }
 }
 
 function formatJewelryLabel(jewelryType?: string) {

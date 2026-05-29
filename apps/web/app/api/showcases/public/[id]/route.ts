@@ -58,6 +58,10 @@ export async function GET(_request: Request, { params }: RouteParams) {
           ? {
               url: signedLogo.url,
               expiresAt: signedLogo.expiresAt,
+              position:
+                publicShowcase.showcase.logo_position ?? "bottom-right",
+              sizePercent:
+                publicShowcase.showcase.logo_size_percent ?? 12,
             }
           : undefined,
       },

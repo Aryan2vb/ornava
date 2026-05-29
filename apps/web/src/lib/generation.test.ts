@@ -16,7 +16,7 @@ test("validateCreateGenerationRequest accepts a valid generation request", () =>
       jewelryType: "ring",
       generationMode: "studio",
       modelPresetId: "studio_none",
-      posePresetId: "ring_standing_studio",
+      posePresetId: "ring_other",
       backgroundPresetId: "warm_ivory",
       aspectRatio: "1:1",
       promptTemplateVersion: "guided-v2",
@@ -26,7 +26,7 @@ test("validateCreateGenerationRequest accepts a valid generation request", () =>
 
   assert.equal(request.mode, "studio");
   assert.equal(request.generationBrief.jewelryType, "ring");
-  assert.equal(request.generationBrief.posePresetId, "ring_standing_studio");
+  assert.equal(request.generationBrief.posePresetId, "ring_other");
 });
 
 test("validateCreateGenerationRequest rejects unsupported modes", () => {
@@ -39,7 +39,7 @@ test("validateCreateGenerationRequest rejects unsupported modes", () => {
           jewelryType: "ring",
           generationMode: "studio",
           modelPresetId: "studio_none",
-          posePresetId: "ring_standing_studio",
+          posePresetId: "ring_other",
           backgroundPresetId: "warm_ivory",
           aspectRatio: "1:1",
           promptTemplateVersion: "guided-v2",
