@@ -110,6 +110,35 @@ export type CreateShowcaseResponse = {
   publicPath: string;
 };
 
+export type ListShowcasesResponse = {
+  showcases: Array<{
+    showcaseId: string;
+    title: string;
+    publicPath: string;
+    itemCount: number;
+    createdAt: string;
+    updatedAt: string;
+  }>;
+};
+
+export type UpdateShowcaseRequest = {
+  title: string;
+};
+
+export type UpdateShowcaseResponse = {
+  showcaseId: string;
+  title: string;
+  publicPath: string;
+  itemCount: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type DeleteShowcaseResponse = {
+  showcaseId: string;
+  deleted: true;
+};
+
 export type PublicShowcaseResponse = {
   showcaseId: string;
   title: string;

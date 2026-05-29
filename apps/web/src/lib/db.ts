@@ -679,6 +679,15 @@ export type ShowcaseRow = {
   updated_at: string;
 };
 
+export type UserShowcaseSummaryRow = {
+  id: string;
+  title: string;
+  public_code: string;
+  item_count: number;
+  created_at: string;
+  updated_at: string;
+};
+
 export type PublicShowcaseRow = {
   id: string;
   title: string;
@@ -746,6 +755,110 @@ export async function createShowcaseForUser(input: {
 
     await client.query("commit");
     return showcase;
+  } catch (error) {
+    await client.query("rollback");
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+export async function listShowcasesForUser(userId: string) {
+  const result = await getPool().query<UserShowcaseSummaryRow>(
+    `
+      select
+        s.id,
+        s.title,
+        s.public_code,
+        count(si.generation_id)::int as item_count,
+        s.created_at::text,
+        s.updated_at::text
+      from showcases s
+      left join showcase_items si on si.showcase_id = s.id
+      where s.user_id = $1
+      group by s.id
+      order by s.created_at desc
+    `,
+    [userId],
+  );
+
+  return result.rows;
+}
+
+export async function updateShowcaseForUser(input: {
+  userId: string;
+  showcaseId: string;
+  title: string;
+}) {
+  const result = await getPool().query<UserShowcaseSummaryRow>(
+    `
+      with updated_showcase as (
+        update showcases
+        set title = $3,
+            updated_at = now()
+        where id = $2
+          and user_id = $1
+        returning id, title, public_code, created_at, updated_at
+      )
+      select
+        us.id,
+        us.title,
+        us.public_code,
+        count(si.generation_id)::int as item_count,
+        us.created_at::text,
+        us.updated_at::text
+      from updated_showcase us
+      left join showcase_items si on si.showcase_id = us.id
+      group by us.id, us.title, us.public_code, us.created_at, us.updated_at
+    `,
+    [input.userId, input.showcaseId, input.title],
+  );
+
+  return result.rows[0] ?? null;
+}
+
+export async function deleteShowcaseForUser(input: {
+  userId: string;
+  showcaseId: string;
+}) {
+  const client = await getPool().connect();
+
+  try {
+    await client.query("begin");
+
+    const showcaseResult = await client.query<{ id: string }>(
+      `
+        select id
+        from showcases
+        where id = $2
+          and user_id = $1
+      `,
+      [input.userId, input.showcaseId],
+    );
+
+    if (!showcaseResult.rows[0]) {
+      await client.query("rollback");
+      return false;
+    }
+
+    await client.query(
+      `
+        delete from showcase_items
+        where showcase_id = $1
+      `,
+      [input.showcaseId],
+    );
+    await client.query(
+      `
+        delete from showcases
+        where id = $2
+          and user_id = $1
+      `,
+      [input.userId, input.showcaseId],
+    );
+
+    await client.query("commit");
+    return true;
   } catch (error) {
     await client.query("rollback");
     throw error;

@@ -12,9 +12,17 @@ const createShowcaseInputSchema = z.object({
   generationIds: z.array(z.string().uuid()).min(1).max(MAX_SHOWCASE_ITEMS),
 });
 
+const updateShowcaseInputSchema = z.object({
+  title: z.string().trim().min(1).max(120),
+});
+
 export type NormalizedCreateShowcaseInput = {
   title: string;
   generationIds: string[];
+};
+
+export type NormalizedUpdateShowcaseInput = {
+  title: string;
 };
 
 export function normalizeCreateShowcaseInput(input: unknown): NormalizedCreateShowcaseInput {
@@ -24,6 +32,10 @@ export function normalizeCreateShowcaseInput(input: unknown): NormalizedCreateSh
     title: parsed.title ?? DEFAULT_SHOWCASE_TITLE,
     generationIds: [...new Set(parsed.generationIds)],
   };
+}
+
+export function normalizeUpdateShowcaseInput(input: unknown): NormalizedUpdateShowcaseInput {
+  return updateShowcaseInputSchema.parse(input);
 }
 
 export function buildShowcaseWhatsappInquiryUrl(input: {
@@ -45,6 +57,19 @@ export function buildShowcaseWhatsappShareText(showcaseUrl: string) {
     `View the selected designs: ${showcaseUrl}`,
     "Reply on WhatsApp to ask about any design.",
   ].join("\n\n");
+}
+
+export function formatShowcaseSummaryMeta(input: {
+  itemCount: number;
+  createdAt: string;
+}) {
+  const itemLabel = input.itemCount === 1 ? "design" : "designs";
+  const createdLabel = new Intl.DateTimeFormat("en-IN", {
+    day: "numeric",
+    month: "short",
+  }).format(new Date(input.createdAt));
+
+  return `${input.itemCount} ${itemLabel} · ${createdLabel}`;
 }
 
 export function shouldLoadShowcaseCandidates(input: {

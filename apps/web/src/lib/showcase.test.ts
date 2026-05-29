@@ -5,6 +5,8 @@ import {
   buildShowcaseWhatsappShareText,
   buildShowcaseWhatsappInquiryUrl,
   DEFAULT_SHOWCASE_TITLE,
+  formatShowcaseSummaryMeta,
+  normalizeUpdateShowcaseInput,
   normalizeCreateShowcaseInput,
   shouldLoadShowcaseCandidates,
   toggleShowcaseGenerationSelection,
@@ -34,6 +36,13 @@ test("normalizeCreateShowcaseInput rejects an empty showcase selection", () => {
   );
 });
 
+test("normalizeUpdateShowcaseInput trims required collection names", () => {
+  assert.deepEqual(normalizeUpdateShowcaseInput({ title: "  Daily stock  " }), {
+    title: "Daily stock",
+  });
+  assert.throws(() => normalizeUpdateShowcaseInput({ title: "" }), /title/);
+});
+
 test("buildShowcaseWhatsappInquiryUrl targets the jeweler phone with buyer context", () => {
   const url = buildShowcaseWhatsappInquiryUrl({
     phone: "+91 98765 43210",
@@ -56,6 +65,23 @@ test("buildShowcaseWhatsappShareText tells buyers what the collection link opens
 
 test("buildShowcasePublicPath uses the short public collection route", () => {
   assert.equal(buildShowcasePublicPath("a1b2c3d4e5f6"), "/s/a1b2c3d4e5f6");
+});
+
+test("formatShowcaseSummaryMeta keeps collection cards compact", () => {
+  assert.equal(
+    formatShowcaseSummaryMeta({
+      itemCount: 1,
+      createdAt: "2026-05-29T10:30:00.000Z",
+    }),
+    "1 design · 29 May",
+  );
+  assert.equal(
+    formatShowcaseSummaryMeta({
+      itemCount: 12,
+      createdAt: "2026-05-28T10:30:00.000Z",
+    }),
+    "12 designs · 28 May",
+  );
 });
 
 test("shouldLoadShowcaseCandidates stops fetching after an empty history response loads", () => {
