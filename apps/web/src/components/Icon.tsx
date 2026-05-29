@@ -10,6 +10,7 @@ type IconName =
   | "clock"
   | "diamond"
   | "download"
+  | "edit"
   | "home"
   | "image"
   | "info"
@@ -21,6 +22,7 @@ type IconName =
   | "search"
   | "share"
   | "spark"
+  | "trash"
   | "upload"
   | "user"
   | "whatsapp"
@@ -101,6 +103,12 @@ const paths: Record<IconName, React.ReactNode> = {
       <path d="M5 21h14" />
     </>
   ),
+  edit: (
+    <>
+      <path d="M12 20h9" />
+      <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" />
+    </>
+  ),
   home: (
     <>
       <path d="M3 11 12 4l9 7" />
@@ -157,6 +165,14 @@ const paths: Record<IconName, React.ReactNode> = {
     </>
   ),
   spark: <path d="M12 2v4M12 18v4M4.9 4.9l2.8 2.8M16.3 16.3l2.8 2.8M2 12h4M18 12h4M4.9 19.1l2.8-2.8M16.3 7.7l2.8-2.8" />,
+  trash: (
+    <>
+      <path d="M3 6h18" />
+      <path d="M8 6V4h8v2" />
+      <path d="M6 6l1 15h10l1-15" />
+      <path d="M10 11v6M14 11v6" />
+    </>
+  ),
   upload: (
     <>
       <path d="M12 21V9" />

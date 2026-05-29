@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { CreateShowcaseResponse, OverlayText } from "@ornava/shared";
 import { CachedImage } from "@/components/CachedImage";
+import { CollectionNameDialog } from "@/components/CollectionNameDialog";
 import { Icon } from "@/components/Icon";
 import { SidebarNav } from "@/components/SidebarNav";
 import { BottomNav } from "@/components/BottomNav";
@@ -87,6 +88,8 @@ export default function GalleryPage() {
   const [selectingShowcase, setSelectingShowcase] = useState(false);
   const [showcaseSelection, setShowcaseSelection] = useState<string[]>([]);
   const [creatingShowcase, setCreatingShowcase] = useState(false);
+  const [showCollectionNameDialog, setShowCollectionNameDialog] =
+    useState(false);
   const [createdShowcase, setCreatedShowcase] =
     useState<CreateShowcaseResponse | null>(null);
   const [showcaseStatus, setShowcaseStatus] = useState<string | null>(null);
@@ -144,10 +147,11 @@ export default function GalleryPage() {
     setCreatedShowcase(null);
     setShowcaseError(null);
     setShowcaseStatus(null);
+    setShowCollectionNameDialog(false);
     setSelectingShowcase((current) => !current);
   }
 
-  async function createShowcaseFromGallery() {
+  async function createShowcaseFromGallery(title: string) {
     setCreatingShowcase(true);
     setShowcaseError(null);
     setShowcaseStatus(null);
@@ -159,6 +163,7 @@ export default function GalleryPage() {
           "content-type": "application/json",
         },
         body: JSON.stringify({
+          title,
           generationIds: showcaseSelection,
         }),
       });
@@ -169,6 +174,7 @@ export default function GalleryPage() {
       }
 
       setCreatedShowcase((await response.json()) as CreateShowcaseResponse);
+      setShowCollectionNameDialog(false);
     } catch (error) {
       setShowcaseError(
         error instanceof Error ? error.message : "Could not create showcase.",
@@ -216,6 +222,9 @@ export default function GalleryPage() {
   const showcaseWhatsappText = createdShowcaseUrl
     ? buildShowcaseWhatsappShareText(createdShowcaseUrl)
     : null;
+  const selectedDesignCopy = `${showcaseSelection.length} selected design${
+    showcaseSelection.length === 1 ? "" : "s"
+  }`;
 
   return (
     <div className="app-shell">
@@ -403,12 +412,31 @@ export default function GalleryPage() {
               className="button gold"
               disabled={creatingShowcase || showcaseSelection.length === 0}
               type="button"
-              onClick={createShowcaseFromGallery}
+              onClick={() => {
+                setShowcaseError(null);
+                setShowCollectionNameDialog(true);
+              }}
             >
-              {creatingShowcase ? "Creating..." : "Generate link"}
+              {creatingShowcase ? "Creating..." : "Name collection"}
             </button>
           </div>
         ) : null}
+        <CollectionNameDialog
+          description={`${selectedDesignCopy}. The name appears on your share link.`}
+          error={showcaseError}
+          eyebrow="New collection"
+          open={showCollectionNameDialog}
+          submitLabel="Create collection"
+          submitting={creatingShowcase}
+          title="Name collection"
+          onClose={() => {
+            if (!creatingShowcase) {
+              setShowCollectionNameDialog(false);
+              setShowcaseError(null);
+            }
+          }}
+          onSubmit={(title) => void createShowcaseFromGallery(title)}
+        />
         {createdShowcase ? (
           <div className="showcase-modal-backdrop" role="presentation">
             <section
@@ -474,7 +502,7 @@ export default function GalleryPage() {
             </section>
           </div>
         ) : null}
-        {showcaseError ? (
+        {showcaseError && !showCollectionNameDialog ? (
           <div className="gallery-showcase-error" role="status">
             {showcaseError}
           </div>
