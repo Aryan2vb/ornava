@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Ornava">
+  <rect width="512" height="512" rx="112" fill="#1A1A1A"/>
+  <circle cx="256" cy="256" r="178" fill="#F5F5DC" opacity="0.08"/>
+  <path d="M146 215h220l-56 142H202L146 215Z" fill="#B8860B"/>
+  <path d="M174 159h164l28 56H146l28-56Z" fill="#F3D47A"/>
+  <path d="M202 215l54 142 54-142" fill="none" stroke="#FFF7D8" stroke-width="18" stroke-linejoin="round"/>
+  <path d="M174 159l82 56 82-56" fill="none" stroke="#1A1A1A" stroke-width="14" stroke-linecap="round" stroke-linejoin="round" opacity="0.36"/>
+  <circle cx="256" cy="132" r="20" fill="#F3D47A"/>
+</svg>
