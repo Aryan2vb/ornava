@@ -24,5 +24,17 @@ export const pwaManifest: MetadataRoute.Manifest = {
       type: "image/svg+xml",
       purpose: "maskable",
     },
+    {
+      src: "/icons/ornava.png",
+      sizes: "512x512",
+      type: "image/png",
+      purpose: "any",
+    },
+    {
+      src: "/icons/ornava.png",
+      sizes: "512x512",
+      type: "image/png",
+      purpose: "maskable",
+    },
   ],
 };

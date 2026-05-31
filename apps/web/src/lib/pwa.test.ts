@@ -13,4 +13,9 @@ test("pwaManifest exposes installable Ornava metadata", () => {
       (icon) => icon.src === "/icons/ornava.svg" && icon.purpose === "maskable",
     ),
   );
+  assert.ok(
+    pwaManifest.icons?.some(
+      (icon) => icon.src === "/icons/ornava.png" && icon.purpose === "maskable",
+    ),
+  );
 });
