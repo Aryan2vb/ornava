@@ -2,14 +2,11 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getPool } from "@/lib/db";
 import { getRequiredUserId } from "@/lib/session";
+import {
+  buildShopLogoObjectKey,
+  validateShopLogoUploadRequest,
+} from "@/lib/shop-logo";
 import { createOriginalUploadUrl } from "@/lib/storage";
-
-const LOGO_MAX_SIZE = 2 * 1024 * 1024; // 2MB
-const LOGO_OBJECT_PREFIX = "users";
-
-function buildLogoObjectKey(userId: string) {
-  return `${LOGO_OBJECT_PREFIX}/${userId}/branding/logo.png`;
-}
 
 // GET /api/profile/logo — return current logo settings + stable image endpoint
 export async function GET() {
@@ -43,12 +40,6 @@ export async function GET() {
 }
 
 // POST /api/profile/logo — get presigned upload URL for logo
-const uploadSchema = z.object({
-  fileSizeBytes: z.number().int().min(1).max(LOGO_MAX_SIZE),
-  width: z.number().int().min(100).max(2000),
-  height: z.number().int().min(100).max(2000),
-});
-
 export async function POST(request: Request) {
   const userId = await getRequiredUserId();
   if (!userId) {
@@ -56,12 +47,12 @@ export async function POST(request: Request) {
   }
 
   try {
-    const body = uploadSchema.parse(await request.json());
-    const objectKey = buildLogoObjectKey(userId);
+    const body = validateShopLogoUploadRequest(await request.json());
+    const objectKey = buildShopLogoObjectKey(userId, body.fileType);
 
     const { uploadUrl, expiresAt } = await createOriginalUploadUrl({
       objectKey,
-      fileType: "image/png",
+      fileType: body.fileType,
     });
 
     // Upsert logo settings

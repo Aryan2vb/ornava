@@ -55,7 +55,7 @@ Result Screen → Shows branded image → Share on WhatsApp
 
 ### Key Features
 
-1. **Logo Upload** — PNG only (transparency support), max 2MB, stored in R2 at `users/{userId}/branding/logo.png`
+1. **Logo Upload** — PNG, JPG, and WebP, max 10MB, stored in R2 with a matching file extension
 2. **Position Picker** — Visual 5-option grid: top-left, top-right, bottom-left, bottom-right, bottom-center
 3. **Size Slider** — 8% to 25% of output image width (default: 12%)
 4. **Live Preview** — Client-side CSS overlay on a sample image (no server round-trip)
@@ -92,11 +92,11 @@ Result Screen → Shows branded image → Share on WhatsApp
 
 ## 7. Technical Constraints
 
-- **Logo format:** PNG only (JPEG has no transparency → white box artifact)
-- **Max file size:** 2MB (logos are small; prevents abuse)
+- **Logo format:** PNG, JPG, or WebP (transparent PNG works best)
+- **Max file size:** 10MB (supports common phone and gallery exports while preventing abuse)
 - **Min dimensions:** 100×100px (below this, logo is too blurry at 12% overlay)
 - **Max dimensions:** 2000×2000px (larger is wasteful; Sharp resizes anyway)
-- **Storage:** R2 originals bucket, path: `users/{userId}/branding/logo.png`
+- **Storage:** R2 originals bucket, path: `users/{userId}/branding/logo.{png|jpg|webp}`
 - **Worker dependency:** Sharp 0.34.x (already installed)
 - **Latency budget:** <300ms added to generation pipeline
 - **Caching:** Worker caches logo buffer in memory (LRU, 50 entries) to avoid R2 read per generation
@@ -107,7 +107,7 @@ Result Screen → Shows branded image → Share on WhatsApp
 
 | Not building | Why |
 |---|---|
-| SVG logo support | Rendering complexity; PNG covers 95% of use cases |
+| SVG logo support | Requires separate rendering and security handling |
 | Opacity control | Adds UI complexity; fixed at 100% for v1 (logos should be opaque) |
 | Multiple logos | One logo per user is sufficient for v1 |
 | Logo on catalog builder exports | Separate feature; catalog has its own layout system |
@@ -120,7 +120,7 @@ Result Screen → Shows branded image → Share on WhatsApp
 
 | Risk | Likelihood | Impact | Mitigation |
 |------|-----------|--------|------------|
-| User uploads JPEG "logo" (no transparency) | High | Low | Validate file type on upload; show warning if not PNG |
+| User uploads a logo without transparency | High | Low | Accept it and explain that transparent PNG works best |
 | Logo too small/blurry on output | Medium | Medium | Enforce 100px minimum; show preview at actual render size |
 | Worker fails to read logo from R2 | Low | Medium | Graceful fallback: generate without logo, log event, notify user |
 | Logo compositing slows batch processing | Low | Low | Sharp is <300ms/image; 50-image batch adds ~15s total (parallel) |

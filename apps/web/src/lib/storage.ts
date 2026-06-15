@@ -26,7 +26,7 @@ function getR2Client() {
 
 export async function createOriginalUploadUrl(input: {
   objectKey: string;
-  fileType: "image/jpeg" | "image/png";
+  fileType: "image/jpeg" | "image/png" | "image/webp";
 }) {
   const expiresInSeconds = 15 * 60;
   const command = new PutObjectCommand({
@@ -47,7 +47,7 @@ export async function createOriginalUploadUrl(input: {
 
 export async function uploadOriginalObject(input: {
   objectKey: string;
-  fileType: "image/jpeg" | "image/png";
+  fileType: "image/jpeg" | "image/png" | "image/webp";
   body: Uint8Array;
 }) {
   const command = new PutObjectCommand({

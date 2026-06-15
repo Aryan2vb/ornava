@@ -18,9 +18,9 @@
 - **so that** every generated image automatically carries my branding when I share it with customers
 
 #### Acceptance Criteria:
-- **Scenario:** Jeweler uploads a PNG logo from their phone gallery
+- **Scenario:** Jeweler uploads a supported logo from their phone gallery
 - **Given:** I am on the Profile > Logo Settings screen
-- **and Given:** I have a PNG file (≤2MB, transparent background) on my device
+- **and Given:** I have a PNG, JPG, or WebP file (≤10MB) on my device
 - **When:** I tap "Upload Logo" and select the file
 - **Then:** The logo is uploaded to R2, a preview shows it overlaid on a sample image, and my logo settings are saved as enabled
 

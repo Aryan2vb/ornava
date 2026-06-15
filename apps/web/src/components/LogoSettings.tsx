@@ -2,6 +2,11 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { deleteDeviceCacheEntriesForSource } from "@/lib/device-cache";
+import {
+  isSupportedShopLogoType,
+  SHOP_LOGO_ACCEPT,
+  SHOP_LOGO_MAX_SIZE_BYTES,
+} from "@/lib/shop-logo";
 import { CachedImage } from "./CachedImage";
 import { Icon } from "./Icon";
 
@@ -85,8 +90,8 @@ export function LogoSettings() {
 
   async function uploadLogo(file: File) {
     setError(null);
-    if (file.type !== "image/png") { setError("Only PNG files supported (for transparency)"); return; }
-    if (file.size > 2 * 1024 * 1024) { setError("Logo must be under 2MB"); return; }
+    if (!isSupportedShopLogoType(file.type)) { setError("Upload a PNG, JPG, or WebP logo"); return; }
+    if (file.size > SHOP_LOGO_MAX_SIZE_BYTES) { setError("Logo must be under 10MB"); return; }
 
     try {
       const dims = await getImageDimensions(file);
@@ -95,12 +100,22 @@ export function LogoSettings() {
       const res = await fetch("/api/profile/logo", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ fileSizeBytes: file.size, width: dims.width, height: dims.height }),
+        body: JSON.stringify({
+          fileType: file.type,
+          fileSizeBytes: file.size,
+          width: dims.width,
+          height: dims.height,
+        }),
       });
       if (!res.ok) throw new Error("Failed to get upload URL");
       const { uploadUrl, logoCacheVersion } = await res.json();
 
-      await fetch(uploadUrl, { method: "PUT", headers: { "content-type": "image/png" }, body: file });
+      const uploadResponse = await fetch(uploadUrl, {
+        method: "PUT",
+        headers: { "content-type": file.type },
+        body: file,
+      });
+      if (!uploadResponse.ok) throw new Error("Failed to upload logo");
       await deleteDeviceCacheEntriesForSource({
         sourceUrl: "/api/profile/logo/image",
       });
@@ -183,7 +198,7 @@ export function LogoSettings() {
           style={{ width: "100%" }}
         >
           <Icon name="camera" size={16} />
-          Upload Logo (PNG)
+          Upload Logo
         </button>
       ) : (
         <button
@@ -198,7 +213,7 @@ export function LogoSettings() {
 
       <input
         ref={inputRef}
-        accept="image/png"
+        accept={SHOP_LOGO_ACCEPT}
         type="file"
         className="visually-hidden"
         onChange={(e) => { const f = e.target.files?.[0]; if (f) void uploadLogo(f); }}
@@ -251,7 +266,7 @@ export function LogoSettings() {
       )}
 
       <p className="copy" style={{ fontSize: "12px" }}>
-        Your logo will be added to every generated image automatically. PNG with transparent background works best.
+        Your logo will be added to every generated image automatically. PNG, JPG, and WebP are supported; a transparent PNG works best.
       </p>
     </div>
   );
