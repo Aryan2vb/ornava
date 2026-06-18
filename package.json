@@ -13,7 +13,8 @@
     "db:check": "node scripts/check-db.mjs",
     "build": "pnpm -r build",
     "typecheck": "pnpm -r typecheck",
-    "lint": "pnpm -r lint"
+    "lint": "pnpm -r lint",
+    "test": "pnpm --filter @ornava/shared build && pnpm --filter @ornava/web test && pnpm --filter @ornava/worker test"
   },
   "dependencies": {
     "dotenv": "^17.0.0",
