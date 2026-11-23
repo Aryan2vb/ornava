@@ -16,35 +16,11 @@ const envSchema = z.object({
     emptyStringToUndefined,
     z.string().url().default("https://app.posthog.com"),
   ),
-  NEXTAUTH_URL: z.preprocess(
+  NEXT_PUBLIC_SUPABASE_URL: z.preprocess(
     emptyStringToUndefined,
-    z.string().url().default("http://localhost:3000"),
+    z.string().url().optional(),
   ),
-  NEXTAUTH_SECRET: z.preprocess(
-    emptyStringToUndefined,
-    z.string().min(1).optional(),
-  ),
-  AUTH_SECRET: z.preprocess(
-    emptyStringToUndefined,
-    z.string().min(1).optional(),
-  ),
-  AUTH_TRUST_HOST: z.preprocess(
-    emptyStringToUndefined,
-    z.string().optional(),
-  ),
-  GOOGLE_CLIENT_ID: z.preprocess(
-    emptyStringToUndefined,
-    z.string().optional(),
-  ),
-  GOOGLE_CLIENT_SECRET: z.preprocess(
-    emptyStringToUndefined,
-    z.string().optional(),
-  ),
-  DEV_AUTH_EMAIL: z.preprocess(
-    emptyStringToUndefined,
-    z.string().email().optional(),
-  ),
-  DEV_AUTH_CODE: z.preprocess(
+  NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: z.preprocess(
     emptyStringToUndefined,
     z.string().min(1).optional(),
   ),
@@ -106,14 +82,8 @@ type RawWebEnv = {
   NEXT_PUBLIC_APP_URL?: string;
   NEXT_PUBLIC_POSTHOG_KEY?: string;
   NEXT_PUBLIC_POSTHOG_HOST?: string;
-  NEXTAUTH_URL?: string;
-  NEXTAUTH_SECRET?: string;
-  AUTH_SECRET?: string;
-  AUTH_TRUST_HOST?: string;
-  GOOGLE_CLIENT_ID?: string;
-  GOOGLE_CLIENT_SECRET?: string;
-  DEV_AUTH_EMAIL?: string;
-  DEV_AUTH_CODE?: string;
+  NEXT_PUBLIC_SUPABASE_URL?: string;
+  NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY?: string;
   ADMIN_EMAILS?: string;
   DATABASE_URL?: string;
   REDIS_URL?: string;
@@ -133,36 +103,12 @@ export function parseWebEnv(rawEnv: RawWebEnv) {
   return envSchema.parse(rawEnv);
 }
 
-export function getRequiredAuthSecret(rawEnv: {
-  NODE_ENV?: string;
-  NEXTAUTH_SECRET?: string;
-  AUTH_SECRET?: string;
-}) {
-  const secret = rawEnv.NEXTAUTH_SECRET || rawEnv.AUTH_SECRET;
-
-  if (secret) {
-    return secret;
-  }
-
-  if (rawEnv.NODE_ENV === "production") {
-    throw new Error("NEXTAUTH_SECRET or AUTH_SECRET is required in production.");
-  }
-
-  return "ornava-dev-secret";
-}
-
 export const env = parseWebEnv({
   NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
   NEXT_PUBLIC_POSTHOG_KEY: process.env.NEXT_PUBLIC_POSTHOG_KEY,
   NEXT_PUBLIC_POSTHOG_HOST: process.env.NEXT_PUBLIC_POSTHOG_HOST,
-  NEXTAUTH_URL: process.env.NEXTAUTH_URL,
-  NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET,
-  AUTH_SECRET: process.env.AUTH_SECRET,
-  AUTH_TRUST_HOST: process.env.AUTH_TRUST_HOST,
-  GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID,
-  GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET,
-  DEV_AUTH_EMAIL: process.env.DEV_AUTH_EMAIL,
-  DEV_AUTH_CODE: process.env.DEV_AUTH_CODE,
+  NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
+  NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
   ADMIN_EMAILS: process.env.ADMIN_EMAILS,
   DATABASE_URL: process.env.DATABASE_URL,
   REDIS_URL: process.env.REDIS_URL,

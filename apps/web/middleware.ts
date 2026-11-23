@@ -1,6 +1,7 @@
+import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
-import { getToken } from "next-auth/jwt";
-import { getRequiredAuthSecret } from "./src/lib/env";
+import { findAppUserByEmail } from "./src/lib/db";
+import { getSupabaseConfig } from "./src/lib/supabase/config";
 
 const protectedPrefixes = [
   "/onboarding",
@@ -21,7 +22,7 @@ function isProtectedPath(pathname: string) {
 }
 
 function isProtectedApiPath(pathname: string) {
-  return pathname.startsWith("/api/") && !pathname.startsWith("/api/auth") && !pathname.startsWith("/api/invite") && !pathname.startsWith("/api/webhooks") && !pathname.startsWith("/api/showcases/public");
+  return pathname.startsWith("/api/") && !pathname.startsWith("/api/invite") && !pathname.startsWith("/api/webhooks") && !pathname.startsWith("/api/showcases/public");
 }
 
 function isInviteExemptPath(pathname: string) {
@@ -30,49 +31,79 @@ function isInviteExemptPath(pathname: string) {
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const token = await getToken({
-    req: request,
-    secret: getRequiredAuthSecret(process.env),
+  const { url, key } = getSupabaseConfig();
+  let response = NextResponse.next({ request });
+
+  // Refreshes an expired access token and writes the new session cookies to
+  // both the forwarded request and the response.
+  const supabase = createServerClient(url, key, {
+    cookies: {
+      getAll() {
+        return request.cookies.getAll();
+      },
+      setAll(cookiesToSet) {
+        for (const { name, value } of cookiesToSet) {
+          request.cookies.set(name, value);
+        }
+        response = NextResponse.next({ request });
+        for (const { name, value, options } of cookiesToSet) {
+          response.cookies.set(name, value, options);
+        }
+      },
+    },
   });
 
-  if (!isProtectedPath(pathname) && !isProtectedApiPath(pathname) && !isInviteExemptPath(pathname)) {
-    return NextResponse.next();
-  }
+  const { data } = await supabase.auth.getClaims();
+  const email = typeof data?.claims?.email === "string" ? data.claims.email : null;
 
-  if (isInviteExemptPath(pathname)) {
-    if (!token) {
-      const loginUrl = request.nextUrl.clone();
-      loginUrl.pathname = "/login";
-      return NextResponse.redirect(loginUrl);
+  // Redirects must carry any refreshed session cookies too.
+  const withSessionCookies = (next: NextResponse) => {
+    for (const cookie of response.cookies.getAll()) {
+      next.cookies.set(cookie);
     }
-    return NextResponse.next();
+    return next;
+  };
+
+  if (!isProtectedPath(pathname) && !isProtectedApiPath(pathname) && !isInviteExemptPath(pathname)) {
+    return response;
   }
 
-  if (!token) {
-    if (isProtectedApiPath(pathname)) {
-      return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  if (!email) {
+    if (pathname.startsWith("/api/")) {
+      return withSessionCookies(NextResponse.json({ error: "unauthorized" }, { status: 401 }));
     }
     const loginUrl = request.nextUrl.clone();
     loginUrl.pathname = "/login";
+    loginUrl.search = "";
     loginUrl.searchParams.set("callbackUrl", `${pathname}${request.nextUrl.search}`);
-    return NextResponse.redirect(loginUrl);
+    return withSessionCookies(NextResponse.redirect(loginUrl));
   }
 
-  // Check invite code for authenticated users accessing protected routes
-  if (!token.hasInviteCode && isProtectedPath(pathname)) {
+  if (isInviteExemptPath(pathname)) {
+    return response;
+  }
+
+  // A user without a row yet (first request after sign-up) has no invite code.
+  const appUser = await findAppUserByEmail(email);
+  const hasInviteCode = Boolean(appUser?.invite_code_id);
+
+  if (!hasInviteCode && isProtectedPath(pathname)) {
     const inviteUrl = request.nextUrl.clone();
     inviteUrl.pathname = "/invite";
-    return NextResponse.redirect(inviteUrl);
+    inviteUrl.search = "";
+    return withSessionCookies(NextResponse.redirect(inviteUrl));
   }
 
-  if (!token.hasInviteCode && isProtectedApiPath(pathname)) {
-    return NextResponse.json({ error: "invite_code_required" }, { status: 403 });
+  if (!hasInviteCode && isProtectedApiPath(pathname)) {
+    return withSessionCookies(NextResponse.json({ error: "invite_code_required" }, { status: 403 }));
   }
 
-  return NextResponse.next();
+  return response;
 }
 
 export const config = {
+  // Node.js runtime so the invite-code check can read Postgres.
+  runtime: "nodejs",
   matcher: [
     "/",
     "/onboarding/:path*",

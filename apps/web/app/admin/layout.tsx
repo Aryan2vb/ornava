@@ -1,19 +1,19 @@
 import { redirect, notFound } from "next/navigation";
-import { getServerSession } from "next-auth/next";
-import { authOptions, isAdminEmail } from "@/lib/auth";
+import { isAdminEmail } from "@/lib/auth";
+import { getSessionUser } from "@/lib/session";
 
 export default async function AdminLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const session = await getServerSession(authOptions);
+  const user = await getSessionUser();
 
-  if (!session?.user?.email) {
+  if (!user) {
     redirect("/login?callbackUrl=/admin");
   }
 
-  if (!isAdminEmail(session.user.email)) {
+  if (!isAdminEmail(user.email)) {
     notFound();
   }
 
@@ -45,11 +45,11 @@ export default async function AdminLayout({
         </nav>
         <div className="adm-sidebar-footer">
           <div className="adm-avatar">
-            {session.user.email.charAt(0).toUpperCase()}
+            {user.email.charAt(0).toUpperCase()}
           </div>
           <div className="adm-user-info">
-            <span className="adm-user-name">{session.user.name ?? "Admin"}</span>
-            <span className="adm-user-email">{session.user.email}</span>
+            <span className="adm-user-name">{user.name ?? "Admin"}</span>
+            <span className="adm-user-email">{user.email}</span>
           </div>
         </div>
       </aside>

@@ -1,44 +1,82 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { signIn } from "next-auth/react";
+import { useState, useTransition, type FormEvent } from "react";
 import type { Route } from "next";
 import { useRouter } from "next/navigation";
+import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 
 type LoginCardProps = {
   callbackUrl: string;
   googleConfigured: boolean;
-  devCredentialsConfigured: boolean;
+  oauthFailed: boolean;
 };
 
-export function LoginCard({
-  callbackUrl,
-  googleConfigured,
-  devCredentialsConfigured,
-}: LoginCardProps) {
+type Mode = "sign-in" | "sign-up";
+
+const MIN_PASSWORD_LENGTH = 6;
+
+function authErrorMessage(message: string | undefined, mode: Mode) {
+  const text = message?.toLowerCase() ?? "";
+  if (text.includes("invalid login credentials")) return "Wrong email or password.";
+  if (text.includes("already registered")) return "An account with this email already exists. Sign in instead.";
+  if (text.includes("password")) return `Password must be at least ${MIN_PASSWORD_LENGTH} characters.`;
+  if (text.includes("email")) return "Enter a valid email address.";
+  if (text.includes("fetch") || text.includes("network")) return "Network error. Check your connection and try again.";
+  return mode === "sign-up" ? "Could not create your account. Try again." : "Could not sign you in. Try again.";
+}
+
+export function LoginCard({ callbackUrl, googleConfigured, oauthFailed }: LoginCardProps) {
   const router = useRouter();
-  const [showDev, setShowDev] = useState(false);
+  const [mode, setMode] = useState<Mode>("sign-in");
   const [email, setEmail] = useState("");
-  const [code, setCode] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState<string | null>(
+    oauthFailed ? "Google sign-in did not finish. Try again." : null,
+  );
   const [isPending, startTransition] = useTransition();
 
-  function handleDevSignIn() {
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
     setError(null);
-    startTransition(() => {
-      void signIn("credentials", {
-        redirect: false,
-        email: email.trim(),
-        code: code.trim(),
-        callbackUrl,
-      }).then((result) => {
-        if (result?.ok) {
-          router.push(callbackUrl as Route);
-          return;
-        }
-        setError("Invalid credentials. Check your email and code.");
-      });
+
+    if (mode === "sign-up" && password.length < MIN_PASSWORD_LENGTH) {
+      setError(`Password must be at least ${MIN_PASSWORD_LENGTH} characters.`);
+      return;
+    }
+
+    startTransition(async () => {
+      const supabase = createSupabaseBrowserClient();
+      const credentials = { email: email.trim(), password };
+      const { data, error: authError } =
+        mode === "sign-up"
+          ? await supabase.auth.signUp(credentials)
+          : await supabase.auth.signInWithPassword(credentials);
+
+      if (authError || !data.session) {
+        setError(authErrorMessage(authError?.message, mode));
+        return;
+      }
+
+      router.push(callbackUrl as Route);
+      router.refresh();
     });
+  }
+
+  function handleGoogle() {
+    setError(null);
+    const redirectTo = new URL("/auth/callback", window.location.origin);
+    redirectTo.searchParams.set("next", callbackUrl);
+
+    void createSupabaseBrowserClient()
+      .auth.signInWithOAuth({ provider: "google", options: { redirectTo: redirectTo.toString() } })
+      .then(({ error: oauthError }) => {
+        if (oauthError) setError("Could not start Google sign-in. Try again.");
+      });
+  }
+
+  function toggleMode() {
+    setError(null);
+    setMode(mode === "sign-in" ? "sign-up" : "sign-in");
   }
 
   return (
@@ -60,7 +98,7 @@ export function LoginCard({
           className="login-google-btn"
           type="button"
           disabled={!googleConfigured}
-          onClick={() => signIn("google", { callbackUrl })}
+          onClick={handleGoogle}
         >
           <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
             <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 0 1-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615Z" fill="#4285F4"/>
@@ -74,47 +112,42 @@ export function LoginCard({
         {/* Trust signals */}
         <p className="login-trust">Your uploaded photos stay private.</p>
 
-        {/* Dev access (hidden by default) */}
-        {devCredentialsConfigured && (
-          <div className="login-dev-section">
-            {!showDev ? (
-              <button
-                className="login-dev-toggle"
-                type="button"
-                onClick={() => setShowDev(true)}
-              >
-                Dev access →
-              </button>
-            ) : (
-              <div className="login-dev-form">
-                <input
-                  aria-label="Email"
-                  className="login-input"
-                  placeholder="dev@example.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                />
-                <input
-                  aria-label="Code"
-                  className="login-input"
-                  placeholder="Access code"
-                  type="password"
-                  value={code}
-                  onChange={(e) => setCode(e.target.value)}
-                />
-                <button
-                  className="login-dev-btn"
-                  type="button"
-                  disabled={isPending || !email.trim() || !code.trim()}
-                  onClick={handleDevSignIn}
-                >
-                  {isPending ? "Checking..." : "Sign in"}
-                </button>
-                {error && <p className="login-error">{error}</p>}
-              </div>
-            )}
-          </div>
-        )}
+        {/* Email + password */}
+        <div className="login-dev-section">
+          <form className="login-dev-form" onSubmit={handleSubmit} noValidate>
+            <input
+              aria-label="Email"
+              className="login-input"
+              type="email"
+              autoComplete="email"
+              placeholder="you@example.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+            <input
+              aria-label="Password"
+              className="login-input"
+              type="password"
+              autoComplete={mode === "sign-up" ? "new-password" : "current-password"}
+              placeholder={mode === "sign-up" ? `Password (${MIN_PASSWORD_LENGTH}+ characters)` : "Password"}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+            <button
+              className="login-dev-btn"
+              type="submit"
+              disabled={isPending || !email.trim() || !password}
+            >
+              {isPending
+                ? mode === "sign-up" ? "Creating account..." : "Signing in..."
+                : mode === "sign-up" ? "Create account" : "Sign in with email"}
+            </button>
+            {error && <p className="login-error" role="alert">{error}</p>}
+            <button className="login-dev-toggle" type="button" onClick={toggleMode}>
+              {mode === "sign-in" ? "New to Ornava? Create an account" : "Already have an account? Sign in"}
+            </button>
+          </form>
+        </div>
       </div>
     </section>
   );

@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth/next";
-import { authOptions, isAdminEmail } from "@/lib/auth";
+import { isAdminEmail } from "@/lib/auth";
+import { getSessionUser } from "@/lib/session";
 import { getPool } from "@/lib/db";
 import { env } from "@/lib/env";
 import { createObjectReadUrl } from "@/lib/storage";
 
 export async function GET() {
-  const session = await getServerSession(authOptions);
-  if (!session?.user?.email || !isAdminEmail(session.user.email)) {
+  const user = await getSessionUser();
+  if (!user || !isAdminEmail(user.email)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

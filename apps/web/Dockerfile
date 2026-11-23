@@ -17,8 +17,11 @@ RUN pnpm --filter @ornava/shared exec tsc --build
 
 # Build web
 COPY apps/web/ apps/web/
-ENV NEXTAUTH_SECRET=build-placeholder
-ENV AUTH_SECRET=build-placeholder
+# NEXT_PUBLIC_* values are inlined into the browser bundle at build time.
+ARG NEXT_PUBLIC_SUPABASE_URL
+ARG NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+ENV NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL
+ENV NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=$NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
 RUN pnpm --filter @ornava/web exec next build
 
 # Production image
