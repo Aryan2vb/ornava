@@ -1,24 +1,44 @@
-name: CI
+name: CI/CD
 
-# Deploys are handled by Render, which builds the root Dockerfile on push.
+# Validation only. Deploys are handled by Render, which builds the root
+# Dockerfile whenever the deployed branch is pushed.
 on:
+  pull_request:
+    branches: [main]
   push:
     branches: [main]
-  pull_request:
+  workflow_dispatch:
 
 jobs:
-  test:
+  ci:
+    name: Validate
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.0.9
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter @ornava/shared exec tsc --build --force
-      - run: pnpm --filter @ornava/web exec tsc --noEmit
-      - run: pnpm --filter @ornava/worker exec tsc --noEmit
-      - run: pnpm --filter @ornava/web test
-      - run: pnpm --filter @ornava/worker test
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Test
+        run: pnpm test
+
+      - name: Build
+        run: pnpm build
