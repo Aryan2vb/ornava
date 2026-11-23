@@ -38,9 +38,10 @@ COPY --from=base /app/packages/shared ./packages/shared
 COPY --from=base /app/apps/worker ./apps/worker
 
 # Web: Next.js standalone server.
-COPY --from=base /app/apps/web/.next/standalone ./web
-COPY --from=base /app/apps/web/.next/static ./web/apps/web/.next/static
-COPY --from=base /app/apps/web/public ./web/apps/web/public
+# Owned by the runtime user so Next.js can write its prerender cache.
+COPY --from=base --chown=node:node /app/apps/web/.next/standalone ./web
+COPY --from=base --chown=node:node /app/apps/web/.next/static ./web/apps/web/.next/static
+COPY --from=base --chown=node:node /app/apps/web/public ./web/apps/web/public
 
 COPY deploy/start.sh ./start.sh
 RUN chmod +x ./start.sh
