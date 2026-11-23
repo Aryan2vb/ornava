@@ -4,15 +4,26 @@ Phase 1 uses Postgres as the source of truth for users, uploaded images, generat
 
 ## Migrations
 
-- `migrations/0001_phase1_initial.sql`: initial Phase 1 schema.
+Schema changes live in `migrations/` as `<timestamp>_<name>.sql`.
 
-Run locally:
+Hosted (Supabase project, linked with `supabase link`):
+
+```bash
+supabase db push        # apply new migrations
+supabase config push    # apply auth settings from config.toml
+```
+
+Local Docker Postgres instead:
 
 ```bash
 pnpm infra:up
 pnpm db:migrate
 pnpm db:check
 ```
+
+Every table in `public` has row-level security on with no policies, and the
+`anon`/`authenticated` roles have no grants: the app only reads and writes from
+the server over `DATABASE_URL`. Keep it that way for new tables.
 
 ## Notes
 

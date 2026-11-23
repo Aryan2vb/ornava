@@ -167,6 +167,21 @@ export function normalizeGenerationBrief(
   };
 }
 
+export async function findAppUserByEmail(rawEmail: string | null | undefined) {
+  const email = normalizeEmail(rawEmail);
+
+  if (!email) {
+    return null;
+  }
+
+  const result = await getPool().query<AppUserRow>(
+    `select id, email, name, avatar_url, beta_cohort, invite_code_id from app_users where email = $1`,
+    [email],
+  );
+
+  return result.rows[0] ?? null;
+}
+
 export async function upsertUserFromOAuthProfile(input: {
   email: string;
   name?: string | null;

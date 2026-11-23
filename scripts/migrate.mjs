@@ -12,7 +12,7 @@ if (!databaseUrl) {
   process.exit(1);
 }
 
-const migrationsDir = join(process.cwd(), "database", "migrations");
+const migrationsDir = join(process.cwd(), "supabase", "migrations");
 const client = new Client({ connectionString: databaseUrl });
 
 await client.connect();

@@ -1,25 +1,14 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth";
-import { grantCredits, linkInviteCodeToUser, upsertUserFromOAuthProfile, validateAndClaimInviteCode } from "@/lib/db";
-import { encode, getToken } from "next-auth/jwt";
-import { getRequiredAuthSecret } from "@/lib/env";
+import { grantCredits, linkInviteCodeToUser, validateAndClaimInviteCode } from "@/lib/db";
+import { getSessionUser } from "@/lib/session";
 
 export async function POST(request: NextRequest) {
-  const session = await getServerSession(authOptions);
-  const userId = session?.user?.id;
-  const email = session?.user?.email;
+  // getSessionUser also creates the app_users row if this is the user's first request.
+  const user = await getSessionUser();
 
-  if (!userId || !email) {
+  if (!user) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
-
-  // Ensure user row exists (handles stale JWT after DB reset)
-  await upsertUserFromOAuthProfile({
-    email,
-    name: session.user?.name,
-    image: session.user?.image,
-  });
 
   const body = await request.json();
   const code = body?.code?.trim();
@@ -28,36 +17,15 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "invite_code_required" }, { status: 400 });
   }
 
-  const claimed = await validateAndClaimInviteCode({ code, userId });
+  const claimed = await validateAndClaimInviteCode({ code, userId: user.id });
 
   if (!claimed) {
     return NextResponse.json({ error: "invalid_or_used_code" }, { status: 400 });
   }
 
-  await linkInviteCodeToUser({ userId, inviteCodeId: claimed.id });
-  await grantCredits(userId, 20);
+  await linkInviteCodeToUser({ userId: user.id, inviteCodeId: claimed.id });
+  await grantCredits(user.id, 20);
 
-  // Update the JWT token to reflect hasInviteCode = true
-  const secret = getRequiredAuthSecret(process.env);
-  const token = await getToken({ req: request, secret });
-
-  if (token) {
-    token.hasInviteCode = true;
-    const newToken = await encode({ token, secret });
-    const response = NextResponse.json({ ok: true });
-    const useSecureCookie = request.url.startsWith("https://");
-    response.cookies.set({
-      name: useSecureCookie
-        ? "__Secure-next-auth.session-token"
-        : "next-auth.session-token",
-      value: newToken,
-      httpOnly: true,
-      sameSite: "lax",
-      path: "/",
-      secure: useSecureCookie,
-    });
-    return response;
-  }
-
+  // Middleware reads invite status from the database, so no session update is needed.
   return NextResponse.json({ ok: true });
 }

@@ -1,11 +1,9 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth";
+import { getRequiredUserId } from "@/lib/session";
 import { getPool, listInviteCodesForUser } from "@/lib/db";
 
 export async function GET() {
-  const session = await getServerSession(authOptions);
-  const userId = session?.user?.id;
+  const userId = await getRequiredUserId();
 
   if (!userId) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });

@@ -1,35 +1,35 @@
 import { redirect } from "next/navigation";
-import { getServerSession } from "next-auth/next";
 import { LoginCard } from "@/components/LoginCard";
-import {
-  authOptions,
-  isDevCredentialsConfigured,
-  isGoogleAuthConfigured,
-} from "@/lib/auth";
-import { env } from "@/lib/env";
+import { isGoogleAuthEnabled } from "@/lib/auth";
+import { getSessionUser } from "@/lib/session";
 
 type LoginPageProps = {
   searchParams?: Promise<{
     callbackUrl?: string;
+    error?: string;
   }>;
 };
 
-export default async function LoginPage({ searchParams }: LoginPageProps) {
-  const session = await getServerSession(authOptions);
+function safeCallbackUrl(value: string | undefined) {
+  return value && value.startsWith("/") && !value.startsWith("//") ? value : "/dashboard";
+}
 
-  if (session) {
+export default async function LoginPage({ searchParams }: LoginPageProps) {
+  const user = await getSessionUser();
+
+  if (user) {
     redirect("/dashboard");
   }
 
   const resolvedSearchParams = await searchParams;
-  const callbackUrl = resolvedSearchParams?.callbackUrl || "/dashboard";
+  const callbackUrl = safeCallbackUrl(resolvedSearchParams?.callbackUrl);
 
   return (
     <main className="login-screen">
       <LoginCard
         callbackUrl={callbackUrl}
-        googleConfigured={isGoogleAuthConfigured() && Boolean(env.NEXTAUTH_URL)}
-        devCredentialsConfigured={isDevCredentialsConfigured()}
+        googleConfigured={await isGoogleAuthEnabled()}
+        oauthFailed={resolvedSearchParams?.error === "oauth"}
       />
     </main>
   );

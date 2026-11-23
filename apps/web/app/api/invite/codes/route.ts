@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth";
+import { isAdminEmail } from "@/lib/auth";
+import { getRequiredUserId, getSessionUser } from "@/lib/session";
 import { createInviteCode, listInviteCodesForUser } from "@/lib/db";
 import { randomBytes } from "crypto";
 
@@ -9,25 +9,29 @@ function generateCode() {
 }
 
 export async function POST(request: NextRequest) {
-  const session = await getServerSession(authOptions);
-  const userId = session?.user?.id;
+  const user = await getSessionUser();
 
-  if (!userId) {
+  if (!user) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
+  // /api/invite is exempt from the middleware invite gate (so new users can
+  // redeem a code), so gate creating codes here: only beta members and admins.
+  if (!user.hasInviteCode && !isAdminEmail(user.email)) {
+    return NextResponse.json({ error: "invite_code_required" }, { status: 403 });
+  }
+
   const body = await request.json().catch(() => ({}));
-  const maxUses = Math.min(Math.max(body?.maxUses ?? 1, 1), 10);
+  const maxUses = Math.min(Math.max(Number(body?.maxUses) || 1, 1), 10);
   const code = generateCode();
 
-  const inviteCode = await createInviteCode({ code, createdBy: userId, maxUses });
+  const inviteCode = await createInviteCode({ code, createdBy: user.id, maxUses });
 
   return NextResponse.json(inviteCode, { status: 201 });
 }
 
 export async function GET() {
-  const session = await getServerSession(authOptions);
-  const userId = session?.user?.id;
+  const userId = await getRequiredUserId();
 
   if (!userId) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
